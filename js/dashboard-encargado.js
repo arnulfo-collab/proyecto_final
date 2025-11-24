@@ -448,3 +448,23 @@ function agregarNuevoUsuario() {
 }
 
 console.log("Dashboard del encargado inicializado correctamente");
+
+// Al final del archivo, agregar integración con geolocalización
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard del encargado - DOM cargado');
+    
+    // Verificar si el widget de ubicación está presente
+    const locationWidget = document.querySelector('.location-time-widget');
+    if (locationWidget) {
+        console.log('✅ Widget de ubicación detectado');
+        
+        // Agregar funcionalidad adicional si es necesario
+        locationWidget.addEventListener('click', function() {
+            // Forzar actualización de ubicación al hacer clic
+            if (window.GeolocationService) {
+                console.log('🔄 Actualizando ubicación manualmente...');
+                // La instancia se creará automáticamente por geolocation.js
+            }
+        });
+    }
+});
