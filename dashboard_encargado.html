@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Encargado - UABC</title>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/dashboard-encargado.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+    <div class="logo">
+        <img src="img/Isotipo.png" alt="UABC Logo">
+        <p>Universidad Autónoma de Baja California</p>
+        <small>Panel del Encargado</small>
+    </div>
+
+    <nav>
+        <a href="#" onclick="mostrarSeccion('estadisticas')" class="active">
+            <span class="icono"></span> Dashboard
+        </a>
+        <a href="#" onclick="mostrarSeccion('solicitudes')">
+            <span class="icono"></span> Solicitudes de Préstamo
+        </a>
+        <a onclick="mostrarSeccion('laboratorios')">
+            <span class="icono"></span> Gestión de Laboratorios
+        </a>
+        <a onclick="mostrarSeccion('mantenimiento')">
+            <span class="icono"></span> Mantenimiento
+        </a>
+        <a onclick="mostrarSeccion('usuarios')">
+            <span class="icono"></span> Gestión de Usuarios
+        </a>
+        <a id="logout">
+            <span class="icono"></span> Cerrar sesión
+        </a>
+    </nav>
+</div>
+
+<div class="contenido">
+    <h2>Panel del Encargado</h2>
+
+    <!-- SECCIÓN: ESTADÍSTICAS/DASHBOARD -->
+    <div id="estadisticas" class="seccion">
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <div class="stat-icon"></div>
+                <div class="stat-content">
+                    <h3>Total Laboratorios</h3>
+                    <span id="total-laboratorios" class="stat-number">0</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon"></div>
+                <div class="stat-content">
+                    <h3>Total Usuarios</h3>
+                    <span id="total-usuarios" class="stat-number">0</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon"></div>
+                <div class="stat-content">
+                    <h3>Préstamos Este Mes</h3>
+                    <span id="prestamos-mes" class="stat-number">0</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon"></div>
+                <div class="stat-content">
+                    <h3>Labs Disponibles</h3>
+                    <span id="labs-disponibles" class="stat-number">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-charts">
+            <div class="chart-container">
+                <div class="chart-card">
+                    <h3>Estados de Laboratorios</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="grafica-laboratorios-estados"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-card">
+                    <h3>Evolución de Préstamos</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="grafica-prestamos-mes"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-card">
+                    <h3>Usuarios por Rol</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="grafica-usuarios-rol"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-card">
+                    <h3>Laboratorios Más Populares</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="grafica-labs-populares"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: SOLICITUDES DE PRÉSTAMO -->
+    <div id="solicitudes" class="seccion" style="display:none;">
+        <h3>Solicitudes de Préstamo</h3>
+
+        <table id="tablaEncargado">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Laboratorio</th>
+                    <th>Fecha Préstamo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 20px;">
+                        Cargando solicitudes...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SECCIÓN: GESTIÓN DE LABORATORIOS -->
+    <div id="laboratorios" class="seccion" style="display:none;">
+        <h3>Gestión de Laboratorios</h3>
+
+        <div style="margin-bottom: 20px;">
+            <button class="btn btn-primary" onclick="mostrarFormLaboratorio()">Nuevo Laboratorio</button>
+        </div>
+
+        <!-- Formulario para nuevo/editar laboratorio -->
+        <div id="formLaboratorioContainer">
+            <h4>Laboratorio</h4>
+            <form id="formLaboratorio">
+                <input type="hidden" id="lab_id_laboratorio" name="id_laboratorio">
+                
+                <div class="form-group">
+                    <label for="lab_nombre">Nombre:</label>
+                    <input type="text" id="lab_nombre" name="nombre" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lab_ubicacion">Ubicación:</label>
+                    <input type="text" id="lab_ubicacion" name="ubicacion" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lab_capacidad">Capacidad:</label>
+                    <input type="number" id="lab_capacidad" name="capacidad" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lab_estado">Estado:</label>
+                    <select id="lab_estado" name="estado" required>
+                        <option value="disponible">Disponible</option>
+                        <option value="mantenimiento">En Mantenimiento</option>
+                        <option value="fuera_servicio">Fuera de Servicio</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-rojo" onclick="cancelarFormLaboratorio()">Cancelar</button>
+            </form>
+        </div>
+
+        <!-- Lista de laboratorios -->
+        <table id="tablaLaboratorios">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Ubicación</th>
+                    <th>Capacidad</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 20px;">
+                        Cargando laboratorios...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SECCIÓN: MANTENIMIENTO -->
+    <div id="mantenimiento" class="seccion" style="display:none;">
+        <h3>Mantenimiento de Laboratorios</h3>
+
+        <!-- Formulario de registro de mantenimiento -->
+        <div id="formMantenimiento">
+            <h4>Registrar Nuevo Mantenimiento</h4>
+            
+            <form id="formMantenimientoForm">
+                <div class="form-group">
+                    <label for="mant_laboratorio">Laboratorio:</label>
+                    <select id="mant_laboratorio" name="id_laboratorio" required>
+                        <option value="">Seleccionar laboratorio...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mant_tipo">Tipo de mantenimiento:</label>
+                    <select id="mant_tipo" name="tipo" required>
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="preventivo">Preventivo</option>
+                        <option value="correctivo">Correctivo</option>
+                        <option value="limpieza">Limpieza</option>
+                        <option value="actualizacion">Actualización</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mant_descripcion">Descripción:</label>
+                    <textarea id="mant_descripcion" name="descripcion" placeholder="Describe el trabajo de mantenimiento a realizar..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="mant_fecha_inicio">Fecha de inicio:</label>
+                    <input type="datetime-local" id="mant_fecha_inicio" name="fecha_inicio" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="mant_fecha_fin">Fecha estimada de finalización:</label>
+                    <input type="datetime-local" id="mant_fecha_fin" name="fecha_fin" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Registrar Mantenimiento</button>
+                <button type="reset" class="btn btn-amarillo">Limpiar Formulario</button>
+            </form>
+        </div>
+
+        <!-- Lista de mantenimientos -->
+        <table id="tablaMantenimientos">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Laboratorio</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 20px;">
+                        Cargando mantenimientos...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SECCIÓN: GESTIÓN DE USUARIOS -->
+    <div id="usuarios" class="seccion" style="display:none;">
+        <h3>Gestión de Usuarios</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="agregarNuevoUsuario()" class="btn btn-verde">
+                Nuevo Usuario
+            </button>
+        </div>
+        
+        <table id="tablaUsuarios">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th>Fecha Registro</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 20px;">
+                        Cargando usuarios...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="js/logout.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/usuarios.js"></script>
+<script src="js/encargado.js"></script>
+<script src="js/mantenimientos.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/dashboard-encargado.js"></script>
+
+</body>
+</html>
