@@ -1,6 +1,3 @@
-// ARCHIVO OBSOLETO - Renombrar a dashboard.js.bak o eliminar
-// Este archivo causa conflictos con dashboard-encargado.js
-
 // =======================================
 // FUNCIONES PRINCIPALES DEL DASHBOARD
 // =======================================

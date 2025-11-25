@@ -15,64 +15,44 @@ header("Content-Type: application/json; charset=utf-8");
 // Buffer de salida
 ob_start();
 
-try {
-    session_start();
-    
-    // Verificar sesión
-    if (!isset($_SESSION["id_usuario"]) || $_SESSION["rol"] !== "encargado") {
-        throw new Exception("No autorizado");
-    }
-    
-    // Conexión directa
-    $conexion = new mysqli('localhost:3307', 'root', '', 'sistema_laboratorios');
-    
-    if ($conexion->connect_error) {
-        throw new Exception("Error de conexión");
-    }
-    
-    $conexion->set_charset("utf8mb4");
-    
-    // Consultar mantenimientos con LEFT JOIN por si no hay usuarios
-    $sql = "
-    SELECT 
-        m.id_mantenimiento,
-        m.tipo,
-        m.descripcion,
-        m.fecha_inicio,
-        m.fecha_fin,
-        m.estado,
-        m.fecha_registro,
-        l.nombre AS laboratorio,
-        COALESCE(u.nombre, 'Usuario no encontrado') AS responsable
-    FROM mantenimientos m
-    JOIN laboratorios l ON m.id_laboratorio = l.id_laboratorio
-    LEFT JOIN usuarios u ON m.id_usuario_responsable = u.id_usuario
-    ORDER BY m.fecha_registro DESC
-    ";
+require_once 'conexion.php';
 
-    $resultado = $conexion->query($sql);
+try {
+    $db = isset($conexion) ? $conexion : (isset($conn) ? $conn : null);
+    
+    if (!$db) {
+        throw new Exception('Error de conexión');
+    }
+
+    $sql = "SELECT m.id_mantenimiento, m.id_laboratorio, l.nombre AS laboratorio_nombre, 
+                   m.tipo, m.descripcion, 
+                   DATE_FORMAT(m.fecha_inicio, '%d/%m/%Y %H:%i') AS fecha_inicio,
+                   DATE_FORMAT(m.fecha_fin, '%d/%m/%Y %H:%i') AS fecha_fin,
+                   m.estado, m.id_usuario_responsable
+            FROM mantenimientos m
+            INNER JOIN laboratorios l ON m.id_laboratorio = l.id_laboratorio
+            ORDER BY m.id_mantenimiento DESC";
+    
+    $resultado = $db->query($sql);
     
     if (!$resultado) {
-        throw new Exception("Error en consulta: " . $conexion->error);
+        throw new Exception('Error en consulta: ' . $db->error);
     }
-    
+
     $mantenimientos = [];
-    while ($row = $resultado->fetch_assoc()) {
-        $mantenimientos[] = $row;
+    while ($fila = $resultado->fetch_assoc()) {
+        $mantenimientos[] = $fila;
     }
-    
-    $conexion->close();
-    
+
+    $resultado->free();
+
     // Limpiar buffer y devolver JSON
     ob_clean();
     echo json_encode($mantenimientos, JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     ob_clean();
-    echo json_encode([
-        "status" => "error",
-        "mensaje" => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => $e->getMessage()]);
 }
 
 ob_end_flush();

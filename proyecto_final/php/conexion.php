@@ -28,9 +28,7 @@ try {
     $conexion->set_charset("utf8mb4");
     
 } catch (Exception $e) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'Error de conexión: ' . $e->getMessage()]);
-    exit;
+    die("Error de conexión: " . $e->getMessage());
 }
 
 // Función para verificar si el usuario está logueado

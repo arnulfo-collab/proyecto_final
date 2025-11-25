@@ -7,264 +7,253 @@
  * - Finalizar mantenimiento
  */
 
-console.log("mantenimientos.js cargado");
+// =====================================================
+// mantenimientos.js - Gestión de mantenimientos v4
+// =====================================================
+console.log("✅ mantenimientos.js cargado");
 
-document.addEventListener("DOMContentLoaded", () => {
-    const formMantenimiento = document.getElementById("formMantenimiento");
-    if (formMantenimiento) {
-        formMantenimiento.addEventListener("submit", enviarMantenimiento);
-    }
-});
-
-// =======================================
-// FUNCIÓN: Cargar laboratorios para mantenimiento
-// =======================================
-async function cargarLaboratoriosParaMantenimiento() {
-    console.log("Cargando laboratorios para mantenimiento...");
+/**
+ * Cargar laboratorios en el select del formulario de mantenimiento
+ */
+window.cargarLaboratoriosParaMantenimiento = async function() {
+    console.log("🔧 [MANTENIMIENTOS] === INICIANDO CARGA DE LABORATORIOS ===");
     
-    const select = document.getElementById("mant_laboratorio");
+    const select = document.getElementById('mant_laboratorio');
+    console.log("🔧 [MANTENIMIENTOS] Select encontrado:", select);
+    
     if (!select) {
-        console.error("No se encontró el select de laboratorios");
+        console.error("❌ [MANTENIMIENTOS] No se encontró el select #mant_laboratorio");
         return;
     }
 
+    select.innerHTML = '<option value="">Cargando...</option>';
+
     try {
-        // Usar parámetro para obtener TODOS los laboratorios
-        const response = await fetch("php/laboratorios.php?para_mantenimiento=1");
-        const data = await response.json();
-
-        console.log("Laboratorios recibidos:", data);
-
-        if (data.status === "error") {
-            throw new Error(data.mensaje);
-        }
+        // Usar laboratorios_api.php en lugar de laboratorios_simple.php
+        const response = await fetch('php/laboratorios_api.php');
+        console.log("🔧 [MANTENIMIENTOS] Response status:", response.status);
+        
+        const text = await response.text();
+        console.log("🔧 [MANTENIMIENTOS] Response:", text.substring(0, 200));
+        
+        const data = JSON.parse(text);
+        console.log("🔧 [MANTENIMIENTOS] Laboratorios recibidos:", data.length);
 
         select.innerHTML = '<option value="">Seleccionar laboratorio...</option>';
         
-        const laboratorios = Array.isArray(data) ? data : [];
-        
-        if (laboratorios.length === 0) {
-            select.innerHTML = '<option value="">No hay laboratorios disponibles</option>';
-            return;
+        if (Array.isArray(data)) {
+            data.forEach(lab => {
+                const option = document.createElement('option');
+                option.value = lab.id_laboratorio;
+                option.textContent = `${lab.nombre} - ${lab.ubicacion}`;
+                select.appendChild(option);
+            });
+            console.log(`✅ [MANTENIMIENTOS] ${data.length} laboratorios cargados`);
+        } else if (data.error) {
+            console.error("❌ [MANTENIMIENTOS] Error:", data.error);
+            select.innerHTML = '<option value="">Error al cargar</option>';
         }
-
-        laboratorios.forEach(lab => {
-            const option = document.createElement("option");
-            option.value = lab.id_laboratorio;
-            // Mostrar estado del laboratorio para que el encargado sepa su situación actual
-            option.textContent = `${lab.nombre} - ${lab.ubicacion} (${lab.estado.toUpperCase()})`;
-            select.appendChild(option);
-        });
-
-        console.log(`${laboratorios.length} laboratorios cargados para mantenimiento`);
-
     } catch (error) {
-        console.error("Error al cargar laboratorios:", error);
-        select.innerHTML = '<option value="">Error al cargar laboratorios</option>';
-        alert("Error al cargar laboratorios: " + error.message);
+        console.error("❌ [MANTENIMIENTOS] Error:", error);
+        select.innerHTML = '<option value="">Error al cargar</option>';
     }
-}
+};
 
-// =======================================
-// FUNCIÓN: Enviar nuevo mantenimiento
-// =======================================
-async function enviarMantenimiento(e) {
-    e.preventDefault();
-    console.log("Enviando nuevo mantenimiento...");
-
-    const formData = new FormData(e.target);
+/**
+ * Cargar lista de mantenimientos
+ */
+window.cargarMantenimientos = async function() {
+    console.log("📋 [MANTENIMIENTOS] Cargando lista...");
     
-    // Validaciones básicas
-    const laboratorio = formData.get("id_laboratorio");
-    const tipo = formData.get("tipo");
-    const descripcion = formData.get("descripcion");
-    const fechaInicio = formData.get("fecha_inicio");
-    const fechaFin = formData.get("fecha_fin");
-
-    if (!laboratorio || !tipo || !descripcion || !fechaInicio || !fechaFin) {
-        alert("Por favor complete todos los campos");
-        return;
-    }
-
-    // Validar fechas
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
-    const ahora = new Date();
-    
-    if (inicio < ahora) {
-        alert("La fecha de inicio no puede ser en el pasado");
-        return;
-    }
-    
-    if (fin <= inicio) {
-        alert("La fecha de finalización debe ser posterior a la fecha de inicio");
-        return;
-    }
-
-    try {
-        const response = await fetch("php/mantenimiento.php", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await response.json();
-        console.log("Respuesta del servidor:", data);
-
-        if (data.status === "ok") {
-            alert("✅ Mantenimiento registrado correctamente");
-            document.getElementById("formMantenimiento").reset();
-            cargarMantenimientos();
-        } else {
-            alert("❌ Error: " + data.mensaje);
-        }
-
-    } catch (error) {
-        console.error("Error al enviar mantenimiento:", error);
-        alert("❌ Error de conexión con el servidor");
-    }
-}
-
-// =======================================
-// FUNCIÓN: Cargar lista de mantenimientos
-// =======================================
-async function cargarMantenimientos() {
-    console.log("Cargando lista de mantenimientos...");
-
     const tbody = document.querySelector("#tablaMantenimientos tbody");
     if (!tbody) {
-        console.error("No se encontró la tabla de mantenimientos");
+        console.error("❌ [MANTENIMIENTOS] No se encontró tbody de mantenimientos");
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666;">🔄 Cargando mantenimientos...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;">🔄 Cargando...</td></tr>';
 
     try {
-        const response = await fetch("php/mantenimiento_listado.php");
-        const data = await response.json();
-
-        console.log("Mantenimientos recibidos:", data);
-
-        if (data.status === "error") {
-            throw new Error(data.mensaje);
-        }
-
-        tbody.innerHTML = "";
-
-        const mantenimientos = Array.isArray(data) ? data : [];
+        const response = await fetch('php/mantenimiento_listado.php');
+        const text = await response.text();
         
-        if (mantenimientos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 20px;">📝 No hay mantenimientos registrados aún</td></tr>';
+        console.log("📦 [MANTENIMIENTOS] Response:", text.substring(0, 300));
+        
+        const data = JSON.parse(text);
+        console.log("📦 [MANTENIMIENTOS] Datos recibidos:", data);
+
+        tbody.innerHTML = '';
+
+        if (data.error) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;">❌ ${data.error}</td></tr>`;
             return;
         }
 
-        mantenimientos.forEach(mant => {
-            const fila = document.createElement('tr');
-            
-            // Determinar clase de estado
-            let estadoClass = '';
-            switch(mant.estado) {
-                case 'en_progreso': estadoClass = 'estado-pendiente'; break;
-                case 'finalizado': estadoClass = 'estado-autorizado'; break;
-                case 'cancelado': estadoClass = 'estado-rechazado'; break;
-                default: estadoClass = 'estado-pendiente';
+        if (!Array.isArray(data) || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">📭 No hay mantenimientos registrados</td></tr>';
+            return;
+        }
+
+        data.forEach(m => {
+            // Badge de tipo
+            let tipoBadge = '';
+            switch(m.tipo) {
+                case 'preventivo':
+                    tipoBadge = '<span class="badge-tipo badge-preventivo">PREVENTIVO</span>';
+                    break;
+                case 'correctivo':
+                    tipoBadge = '<span class="badge-tipo badge-correctivo">CORRECTIVO</span>';
+                    break;
+                case 'limpieza':
+                    tipoBadge = '<span class="badge-tipo badge-limpieza">LIMPIEZA</span>';
+                    break;
+                case 'actualizacion':
+                    tipoBadge = '<span class="badge-tipo badge-actualizacion">ACTUALIZACIÓN</span>';
+                    break;
+                default:
+                    tipoBadge = `<span class="badge-tipo">${m.tipo}</span>`;
             }
-            
-            fila.innerHTML = `
-                <td>${mant.id_mantenimiento}</td>
-                <td><strong>${escapeHtml(mant.laboratorio)}</strong></td>
-                <td>
-                    <span style="
-                        background: #e9ecef; 
-                        padding: 2px 8px; 
-                        border-radius: 12px; 
-                        font-size: 11px; 
-                        color: #495057;
-                    ">
-                        ${escapeHtml(mant.tipo).toUpperCase()}
-                    </span>
-                </td>
-                <td title="${escapeHtml(mant.descripcion)}">
-                    ${escapeHtml(mant.descripcion).substring(0, 40)}${mant.descripcion.length > 40 ? '...' : ''}
-                </td>
-                <td>${new Date(mant.fecha_inicio).toLocaleString('es-ES', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit'
-                })}</td>
-                <td>${new Date(mant.fecha_fin).toLocaleString('es-ES', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit'
-                })}</td>
-                <td>
-                    <span class="estado ${estadoClass}">
-                        ${mant.estado.replace('_', ' ').toUpperCase()}
-                    </span>
-                </td>
-                <td>
-                    ${mant.estado === 'en_progreso' ? `
-                        <button class="btn btn-verde" onclick="finalizarMantenimiento(${mant.id_mantenimiento})" title="Marcar como finalizado">
-                            ✅ Finalizar
-                        </button>
-                    ` : '<span style="color: #6c757d; font-style: italic;">Sin acciones</span>'}
-                </td>
+
+            // Badge de estado
+            let estadoBadge = '';
+            switch(m.estado) {
+                case 'en_progreso':
+                    estadoBadge = '<span class="badge-estado badge-en-progreso">EN PROGRESO</span>';
+                    break;
+                case 'finalizado':
+                    estadoBadge = '<span class="badge-estado badge-finalizado">FINALIZADO</span>';
+                    break;
+                case 'cancelado':
+                    estadoBadge = '<span class="badge-estado badge-cancelado">CANCELADO</span>';
+                    break;
+                default:
+                    estadoBadge = `<span class="badge-estado">${m.estado}</span>`;
+            }
+
+            // Acciones
+            let acciones = '';
+            if (m.estado === 'en_progreso') {
+                acciones = `<button onclick="finalizarMantenimiento(${m.id_mantenimiento})" class="btn-finalizar">✓ Finalizar</button>`;
+            } else {
+                acciones = '<span class="sin-acciones">Sin acciones</span>';
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${m.id_mantenimiento}</td>
+                <td>${m.laboratorio_nombre || 'N/A'}</td>
+                <td>${tipoBadge}</td>
+                <td>${m.descripcion || ''}</td>
+                <td>${m.fecha_inicio || ''}</td>
+                <td>${m.fecha_fin || ''}</td>
+                <td>${estadoBadge}</td>
+                <td>${acciones}</td>
             `;
-            
-            tbody.appendChild(fila);
+            tbody.appendChild(tr);
         });
 
-        console.log(`${mantenimientos.length} mantenimientos cargados correctamente`);
+        console.log(`✅ [MANTENIMIENTOS] ${data.length} mantenimientos cargados`);
 
     } catch (error) {
-        console.error("Error al cargar mantenimientos:", error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="color: red; text-align: center; padding: 20px;">
-                    ❌ Error al cargar mantenimientos<br>
-                    <small style="color: #666;">${error.message}</small>
-                </td>
-            </tr>
-        `;
+        console.error("❌ [MANTENIMIENTOS] Error:", error);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;">❌ Error: ${error.message}</td></tr>`;
     }
-}
+};
 
-// =======================================
-// FUNCIÓN: Finalizar mantenimiento
-// =======================================
-async function finalizarMantenimiento(id_mantenimiento) {
-    if (!confirm("¿Está seguro de marcar este mantenimiento como finalizado?\n\nEsto cambiará el estado del laboratorio a 'disponible'.")) {
+/**
+ * Enviar formulario de nuevo mantenimiento
+ */
+window.enviarMantenimiento = async function(event) {
+    if (event) event.preventDefault();
+    console.log("📤 [MANTENIMIENTOS] Enviando formulario...");
+
+    const form = document.getElementById('formMantenimiento');
+    if (!form) {
+        console.error("❌ [MANTENIMIENTOS] No se encontró el formulario");
         return;
     }
 
-    try {
-        const formData = new FormData();
-        formData.append("id_mantenimiento", id_mantenimiento);
+    const formData = new FormData(form);
+    
+    // Debug
+    console.log("📤 [MANTENIMIENTOS] Datos del formulario:");
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
 
-        const response = await fetch("php/mantenimiento_finalizar.php", {
-            method: "POST",
+    try {
+        const response = await fetch('php/mantenimiento_registrar.php', {
+            method: 'POST',
             body: formData
         });
 
-        const data = await response.json();
-        console.log("Respuesta finalizar:", data);
+        const text = await response.text();
+        console.log("📄 [MANTENIMIENTOS] Response:", text);
 
-        if (data.status === "ok") {
-            alert("✅ Mantenimiento finalizado correctamente\n\nEl laboratorio está nuevamente disponible para préstamos.");
+        const data = JSON.parse(text);
+
+        if (data.ok) {
+            alert('✅ ' + (data.msg || 'Mantenimiento registrado'));
+            form.reset();
+            cargarMantenimientos();
+            cargarLaboratoriosParaMantenimiento();
+        } else {
+            alert('❌ ' + (data.error || 'Error al registrar'));
+        }
+    } catch (error) {
+        console.error("❌ [MANTENIMIENTOS] Error:", error);
+        alert('❌ Error de conexión');
+    }
+};
+
+/**
+ * Finalizar un mantenimiento
+ */
+window.finalizarMantenimiento = async function(id) {
+    console.log("✅ [MANTENIMIENTOS] Finalizando ID:", id);
+
+    if (!confirm('¿Finalizar este mantenimiento?')) return;
+
+    const formData = new FormData();
+    formData.append('id', id);
+
+    try {
+        const response = await fetch('php/mantenimiento_finalizar.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const text = await response.text();
+        console.log("📄 [MANTENIMIENTOS] Response:", text);
+
+        const data = JSON.parse(text);
+
+        if (data.ok) {
+            alert('✅ ' + (data.msg || 'Mantenimiento finalizado'));
             cargarMantenimientos();
         } else {
-            alert("❌ Error: " + data.mensaje);
+            alert('❌ ' + (data.error || 'Error al finalizar'));
         }
-
     } catch (error) {
-        console.error("Error al finalizar mantenimiento:", error);
-        alert("❌ Error de conexión");
+        console.error("❌ [MANTENIMIENTOS] Error:", error);
+        alert('❌ Error de conexión');
     }
-}
+};
 
-// =======================================
-// FUNCIÓN: Escapar HTML
-// =======================================
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Registrar funciones globalmente
+console.log("✅ [MANTENIMIENTOS] Todas las funciones registradas globalmente");
+console.log("  ✓ cargarLaboratoriosParaMantenimiento");
+console.log("  ✓ cargarMantenimientos");
+console.log("  ✓ enviarMantenimiento");
+console.log("  ✓ finalizarMantenimiento");
+
+// Configurar formulario cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("✅ [MANTENIMIENTOS] DOM cargado");
+    
+    const form = document.getElementById('formMantenimiento');
+    if (form) {
+        form.addEventListener('submit', enviarMantenimiento);
+        console.log("✅ [MANTENIMIENTOS] Formulario configurado");
+    }
+});

@@ -1,208 +1,288 @@
 // Lógica específica del dashboard del encargado
 
-// Variables globales para datos locales del dashboard (nombres únicos para evitar conflictos)
-let laboratoriosLocal = [
-    {id_laboratorio: 1, nombre: "Lab Computación A", ubicacion: "Edificio A - Piso 1", capacidad: 30, estado: "disponible"},
-    {id_laboratorio: 2, nombre: "Lab Computación B", ubicacion: "Edificio A - Piso 2", capacidad: 25, estado: "disponible"}, 
-    {id_laboratorio: 3, nombre: "Lab Química", ubicacion: "Edificio B - Piso 1", capacidad: 20, estado: "mantenimiento"},
-    {id_laboratorio: 4, nombre: "Lab Física", ubicacion: "Edificio B - Piso 2", capacidad: 22, estado: "disponible"},
-    {id_laboratorio: 5, nombre: "Lab Biología", ubicacion: "Edificio C - Piso 1", capacidad: 18, estado: "disponible"}
-];
+console.log("dashboard-encargado.js cargado");
 
-let usuariosLocal = [
-    {id: 1, nombre: "Juan Pérez", correo: "juan@uabc.mx", rol: "alumno"},
-    {id: 2, nombre: "María García", correo: "maria@uabc.mx", rol: "maestro"},
-    {id: 3, nombre: "Pedro López", correo: "pedro@uabc.mx", rol: "alumno"},
-    {id: 4, nombre: "Ana Rodríguez", correo: "ana@uabc.mx", rol: "maestro"},
-    {id: 5, nombre: "Admin Sistema", correo: "admin@uabc.mx", rol: "encargado"},
-    {id: 6, nombre: "Carlos Mendez", correo: "carlos@uabc.mx", rol: "encargado"}
-];
+// Variables globales para datos del servidor
+let laboratoriosData = [];
+let usuariosData = [];
+let prestamosData = [];
 
 // Inicialización del dashboard
 document.addEventListener("DOMContentLoaded", function() {
     console.log("Dashboard del encargado - DOM cargado");
-    
-    // Esperar un poco más para que otros scripts se carguen
-    setTimeout(() => {
-        inicializarDashboard();
-    }, 200);
+    setTimeout(() => inicializarDashboard(), 200);
 });
 
 function inicializarDashboard() {
     console.log("Inicializando dashboard del encargado...");
     
-    // Verificar que existan las secciones
     const verificarSecciones = () => {
         const secciones = document.querySelectorAll(".seccion");
         const estadisticasSeccion = document.getElementById('estadisticas');
         
         console.log("Secciones encontradas:", secciones.length);
-        console.log("Sección estadísticas existe:", !!estadisticasSeccion);
+        console.log("Seccion estadisticas existe:", !!estadisticasSeccion);
         
         if (secciones.length > 0 && estadisticasSeccion) {
-            console.log("Secciones disponibles, cargando estadísticas...");
+            console.log("Secciones disponibles, cargando estadisticas...");
             mostrarSeccion('estadisticas');
             return true;
-        } else {
-            console.log("Secciones aún no disponibles");
-            return false;
         }
+        return false;
     };
     
-    // Intentar cargar con reintentos
     if (!verificarSecciones()) {
-        setTimeout(() => {
-            if (!verificarSecciones()) {
-                console.error("Error: No se encontraron las secciones del dashboard");
-            }
-        }, 500);
+        setTimeout(() => verificarSecciones(), 500);
     }
 }
 
-function mostrarSeccion(nombre) {
-    console.log(`Mostrando sección: ${nombre}`);
+function mostrarSeccion(seccion) {
+    console.log('[DASHBOARD] Mostrando seccion:', seccion);
     
     // Ocultar todas las secciones
-    const secciones = document.querySelectorAll(".seccion");
-    if (secciones.length === 0) {
-        console.error("No se encontraron secciones");
+    document.querySelectorAll('.seccion').forEach(s => {
+        s.style.display = 'none';
+    });
+
+    // Mostrar la sección solicitada
+    const seccionElement = document.getElementById(seccion);
+    if (seccionElement) {
+        seccionElement.style.display = 'block';
+        console.log('[DASHBOARD] Seccion mostrada:', seccion);
+    } else {
+        console.error('[DASHBOARD] No se encontro la seccion:', seccion);
         return;
     }
-    
-    secciones.forEach(seccion => {
-        seccion.style.display = "none";
-    });
-    
-    // Mostrar la sección seleccionada
-    const seccionSeleccionada = document.getElementById(nombre);
-    if (!seccionSeleccionada) {
-        console.error(`Sección "${nombre}" no encontrada`);
-        return;
-    }
-    
-    seccionSeleccionada.style.display = "block";
-    
-    // Actualizar navegación
-    document.querySelectorAll(".sidebar a").forEach(link => {
-        link.classList.remove("active");
-    });
-    
-    const botonActivo = document.querySelector(`[onclick="mostrarSeccion('${nombre}')"]`);
-    if (botonActivo) {
-        botonActivo.classList.add("active");
-    }
-    
-    // Cargar contenido específico
-    switch(nombre) {
+
+    // Cargar contenido específico según la sección
+    switch(seccion) {
         case 'estadisticas':
             cargarEstadisticas();
             break;
-        case 'laboratorios':
-            cargarLaboratoriosGestion();
-            break;
-        case 'solicitudes':
-            if (typeof cargarPrestamosEncargado === 'function') {
-                cargarPrestamosEncargado();
-            }
-            break;
+            
         case 'usuarios':
+            console.log('[DASHBOARD] Cargando usuarios...');
             if (typeof cargarUsuarios === 'function') {
                 cargarUsuarios();
             }
             break;
+            
+        case 'laboratorios':
+            console.log('[DASHBOARD] Cargando laboratorios...');
+            if (typeof recargarTablaLaboratorios === 'function') {
+                recargarTablaLaboratorios();
+            }
+            break;
+            
+        case 'solicitudes':
+            console.log('[DASHBOARD] Cargando solicitudes...');
+            if (typeof cargarPrestamosEncargado === 'function') {
+                cargarPrestamosEncargado();
+            }
+            break;
+            
         case 'mantenimiento':
+            console.log('[DASHBOARD] Iniciando seccion mantenimiento');
+            
             if (typeof cargarMantenimientos === 'function') {
                 cargarMantenimientos();
             }
-            if (typeof cargarLaboratoriosParaMantenimiento === 'function') {
-                cargarLaboratoriosParaMantenimiento();
-            }
+            
+            setTimeout(() => {
+                if (typeof cargarLaboratoriosParaMantenimiento === 'function') {
+                    cargarLaboratoriosParaMantenimiento();
+                }
+            }, 300);
             break;
     }
 }
 
-function cargarEstadisticas() {
-    console.log("Cargando estadísticas...");
+/**
+ * Cargar estadísticas desde el servidor
+ */
+async function cargarEstadisticas() {
+    console.log("Cargando estadisticas desde el servidor...");
     
-    // Verificar Chart.js
-    if (typeof Chart === 'undefined') {
-        console.error("Chart.js no disponible");
-        setTimeout(() => {
-            if (typeof Chart !== 'undefined') {
-                console.log("Chart.js ahora disponible, reintentando...");
-                cargarEstadisticas();
-            }
-        }, 1000);
-        return;
+    try {
+        // Cargar datos reales del servidor
+        await Promise.all([
+            cargarLaboratoriosDelServidor(),
+            cargarUsuariosDelServidor(),
+            cargarPrestamosDelServidor()
+        ]);
+        
+        // Actualizar números con datos reales
+        actualizarNumeros();
+        
+        // Generar gráficas
+        if (typeof Chart !== 'undefined') {
+            setTimeout(generarGraficas, 300);
+        }
+        
+    } catch (error) {
+        console.error("Error cargando estadisticas:", error);
+    }
+}
+
+/**
+ * Cargar laboratorios del servidor
+ */
+async function cargarLaboratoriosDelServidor() {
+    try {
+        const response = await fetch('php/laboratorios_api.php');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            laboratoriosData = data;
+            console.log("[DASHBOARD] Laboratorios cargados:", laboratoriosData.length);
+        }
+    } catch (error) {
+        console.error("Error cargando laboratorios:", error);
+        laboratoriosData = [];
+    }
+}
+
+/**
+ * Cargar usuarios del servidor
+ */
+async function cargarUsuariosDelServidor() {
+    try {
+        const response = await fetch('php/usuarios_obtener.php');
+        const data = await response.json();
+        
+        // Corregido: verificar tanto "ok" como "status"
+        if (data.usuarios && Array.isArray(data.usuarios)) {
+            usuariosData = data.usuarios;
+            console.log("[DASHBOARD] Usuarios cargados:", usuariosData.length);
+        } else if (Array.isArray(data)) {
+            usuariosData = data;
+            console.log("[DASHBOARD] Usuarios cargados:", usuariosData.length);
+        } else {
+            console.warn("[DASHBOARD] No se encontraron usuarios en la respuesta:", data);
+            usuariosData = [];
+        }
+    } catch (error) {
+        console.error("Error cargando usuarios:", error);
+        usuariosData = [];
+    }
+}
+
+/**
+ * Cargar préstamos del servidor
+ */
+async function cargarPrestamosDelServidor() {
+    try {
+        const response = await fetch('php/prestamos_encargado.php');
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            prestamosData = data;
+            console.log("[DASHBOARD] Prestamos cargados:", prestamosData.length);
+        } else if (data.prestamos && Array.isArray(data.prestamos)) {
+            prestamosData = data.prestamos;
+            console.log("[DASHBOARD] Prestamos cargados:", prestamosData.length);
+        } else {
+            console.warn("[DASHBOARD] No se encontraron prestamos en la respuesta:", data);
+            prestamosData = [];
+        }
+    } catch (error) {
+        console.error("Error cargando prestamos:", error);
+        prestamosData = [];
+    }
+}
+
+/**
+ * Actualizar números en las tarjetas
+ */
+function actualizarNumeros() {
+    // Total laboratorios
+    const totalLabs = document.getElementById('total-laboratorios');
+    if (totalLabs) {
+        totalLabs.textContent = laboratoriosData.length || 0;
     }
     
-    // Actualizar números
-    actualizarNumeros();
+    // Total usuarios
+    const totalUsuarios = document.getElementById('total-usuarios');
+    if (totalUsuarios) {
+        totalUsuarios.textContent = usuariosData.length || 0;
+    }
     
-    // Generar gráficas con delay
-    setTimeout(generarGraficas, 300);
+    // Préstamos del mes actual
+    const prestamosMes = document.getElementById('prestamos-mes');
+    if (prestamosMes) {
+        const mesActual = new Date().getMonth();
+        const anioActual = new Date().getFullYear();
+        
+        const prestamosEsteMes = prestamosData.filter(p => {
+            const fecha = new Date(p.fecha_prestamo || p.fecha_solicitud);
+            return fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
+        });
+        
+        prestamosMes.textContent = prestamosEsteMes.length || 0;
+    }
+    
+    // Laboratorios disponibles
+    const labsDisponibles = document.getElementById('labs-disponibles');
+    if (labsDisponibles) {
+        const disponibles = laboratoriosData.filter(l => l.estado === 'disponible');
+        labsDisponibles.textContent = disponibles.length || 0;
+    }
+    
+    console.log("[DASHBOARD] Numeros actualizados");
 }
 
-function actualizarNumeros() {
-    const elementos = {
-        'total-laboratorios': laboratoriosLocal.length,
-        'total-usuarios': usuariosLocal.length,
-        'prestamos-mes': 15,
-        'labs-disponibles': laboratoriosLocal.filter(l => l.estado === 'disponible').length
-    };
-    
-    Object.entries(elementos).forEach(([id, valor]) => {
-        const elemento = document.getElementById(id);
-        if (elemento) {
-            elemento.textContent = valor;
-            console.log(`${id}: ${valor}`);
-        } else {
-            console.warn(`Elemento ${id} no encontrado`);
-        }
-    });
-}
-
+/**
+ * Generar gráficas con datos reales
+ */
 function generarGraficas() {
-    console.log("Generando gráficas...");
+    console.log("Generando graficas con datos reales...");
     
-    const graficas = [
-        { id: 'grafica-laboratorios-estados', func: generarGraficaEstadosLabs },
-        { id: 'grafica-prestamos-mes', func: generarGraficaPrestamosMes },
-        { id: 'grafica-usuarios-rol', func: generarGraficaUsuariosRol },
-        { id: 'grafica-labs-populares', func: generarGraficaLabsPopulares }
+    // Destruir gráficas existentes antes de crear nuevas
+    const canvasIds = [
+        'grafica-laboratorios-estados',
+        'grafica-prestamos-mes', 
+        'grafica-usuarios-rol',
+        'grafica-labs-populares'
     ];
     
-    graficas.forEach(({ id, func }) => {
+    canvasIds.forEach(id => {
         const canvas = document.getElementById(id);
         if (canvas) {
-            console.log(`Generando gráfica: ${id}`);
-            try {
-                func();
-            } catch (error) {
-                console.error(`Error en gráfica ${id}:`, error);
+            const existingChart = Chart.getChart(canvas);
+            if (existingChart) {
+                existingChart.destroy();
             }
-        } else {
-            console.error(`Canvas ${id} no encontrado`);
         }
     });
+    
+    generarGraficaEstadosLabs();
+    generarGraficaPrestamosMes();
+    generarGraficaUsuariosRol();
+    generarGraficaLabsPopulares();
 }
 
+/**
+ * Gráfica de estados de laboratorios
+ */
 function generarGraficaEstadosLabs() {
     const ctx = document.getElementById('grafica-laboratorios-estados');
     if (!ctx) return;
     
-    const estados = { disponible: 0, mantenimiento: 0, fuera_servicio: 0 };
-    laboratoriosLocal.forEach(lab => {
-        estados[lab.estado] = (estados[lab.estado] || 0) + 1;
+    const estados = { disponible: 0, ocupado: 0, mantenimiento: 0 };
+    
+    laboratoriosData.forEach(lab => {
+        if (estados.hasOwnProperty(lab.estado)) {
+            estados[lab.estado]++;
+        }
     });
     
     new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Disponible', 'Mantenimiento', 'Fuera de Servicio'],
+            labels: ['Disponible', 'Ocupado', 'Mantenimiento'],
             datasets: [{
-                data: [estados.disponible, estados.mantenimiento, estados.fuera_servicio],
-                backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                data: [estados.disponible, estados.ocupado, estados.mantenimiento],
+                backgroundColor: ['#28a745', '#007bff', '#ffc107']
             }]
         },
         options: {
@@ -213,20 +293,35 @@ function generarGraficaEstadosLabs() {
     });
 }
 
+/**
+ * Gráfica de préstamos por mes
+ */
 function generarGraficaPrestamosMes() {
     const ctx = document.getElementById('grafica-prestamos-mes');
     if (!ctx) return;
     
+    // Contar préstamos por mes
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const conteoMeses = new Array(12).fill(0);
+    
+    prestamosData.forEach(p => {
+        const fecha = new Date(p.fecha_prestamo || p.fecha_solicitud);
+        if (!isNaN(fecha.getTime())) {
+            conteoMeses[fecha.getMonth()]++;
+        }
+    });
+    
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+            labels: meses,
             datasets: [{
-                label: 'Préstamos',
-                data: [12, 19, 3, 5, 2, 3],
+                label: 'Prestamos',
+                data: conteoMeses,
                 borderColor: '#155724',
                 backgroundColor: 'rgba(21, 87, 36, 0.1)',
-                tension: 0.4
+                tension: 0.4,
+                fill: true
             }]
         },
         options: {
@@ -237,13 +332,19 @@ function generarGraficaPrestamosMes() {
     });
 }
 
+/**
+ * Gráfica de usuarios por rol
+ */
 function generarGraficaUsuariosRol() {
     const ctx = document.getElementById('grafica-usuarios-rol');
     if (!ctx) return;
     
     const roles = { alumno: 0, maestro: 0, encargado: 0 };
-    usuariosLocal.forEach(user => {
-        roles[user.rol] = (roles[user.rol] || 0) + 1;
+    
+    usuariosData.forEach(user => {
+        if (roles.hasOwnProperty(user.rol)) {
+            roles[user.rol]++;
+        }
     });
     
     new Chart(ctx, {
@@ -264,27 +365,50 @@ function generarGraficaUsuariosRol() {
     });
 }
 
+/**
+ * Gráfica de laboratorios más populares
+ */
 function generarGraficaLabsPopulares() {
     const ctx = document.getElementById('grafica-labs-populares');
     if (!ctx) return;
     
-    const nombres = laboratoriosLocal.slice(0, 4).map(lab => lab.nombre);
-    const usos = [25, 19, 15, 8];
+    // Contar préstamos por laboratorio usando el nombre
+    const conteoPorLab = {};
+    
+    prestamosData.forEach(p => {
+        const labNombre = p.laboratorio || 'Desconocido';
+        conteoPorLab[labNombre] = (conteoPorLab[labNombre] || 0) + 1;
+    });
+    
+    // Convertir a array y ordenar por uso
+    const labsConUso = Object.entries(conteoPorLab)
+        .map(([nombre, usos]) => ({ nombre, usos }))
+        .sort((a, b) => b.usos - a.usos)
+        .slice(0, 5);
+    
+    // Si no hay datos, mostrar laboratorios sin uso
+    if (labsConUso.length === 0) {
+        laboratoriosData.slice(0, 5).forEach(lab => {
+            labsConUso.push({ nombre: lab.nombre, usos: 0 });
+        });
+    }
     
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: nombres,
+            labels: labsConUso.map(l => l.nombre.length > 15 ? l.nombre.substring(0, 15) + '...' : l.nombre),
             datasets: [{
-                label: 'Usos este mes',
-                data: usos,
-                backgroundColor: ['#667eea', '#f093fb', '#4facfe', '#43e97b']
+                label: 'Prestamos',
+                data: labsConUso.map(l => l.usos),
+                backgroundColor: ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a']
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } }
+            indexAxis: 'y',
+            scales: { x: { beginAtZero: true } },
+            plugins: { legend: { display: false } }
         }
     });
 }
@@ -302,169 +426,38 @@ function cancelarFormLaboratorio() {
     if (form) form.reset();
 }
 
-function cargarLaboratoriosGestion() {
-    console.log("Cargando gestión de laboratorios...");
-    
-    const tbody = document.querySelector("#tablaLaboratorios tbody");
-    if (!tbody) {
-        console.error("Tabla de laboratorios no encontrada");
-        return;
-    }
-    
-    tbody.innerHTML = "";
-    
-    if (laboratoriosLocal.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px;">
-                    <div style="font-size: 18px; font-weight: bold;">No hay laboratorios registrados</div>
-                    <div style="font-size: 14px; color: #999;">Use el botón "Nuevo Laboratorio" para crear uno</div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    laboratoriosLocal.forEach(lab => {
-        const estadoColors = {
-            'disponible': '#28a745',
-            'mantenimiento': '#ffc107',
-            'fuera_servicio': '#dc3545'
-        };
-        
-        const estadoTextos = {
-            'disponible': 'DISPONIBLE',
-            'mantenimiento': 'MANTENIMIENTO',
-            'fuera_servicio': 'FUERA DE SERVICIO'
-        };
-        
-        const fila = document.createElement('tr');
-        fila.innerHTML = `
-            <td style="font-weight: bold;">${lab.id_laboratorio}</td>
-            <td style="font-weight: bold;">${lab.nombre}</td>
-            <td>${lab.ubicacion}</td>
-            <td style="text-align: center;">${lab.capacidad}</td>
-            <td style="text-align: center;">
-                <span style="
-                    background-color: ${estadoColors[lab.estado]}; 
-                    color: white; 
-                    padding: 6px 12px; 
-                    border-radius: 15px; 
-                    font-size: 11px; 
-                    font-weight: bold;
-                ">
-                    ${estadoTextos[lab.estado]}
-                </span>
-            </td>
-            <td style="text-align: center;">
-                <select onchange="cambiarEstadoLab(${lab.id_laboratorio}, this.value)" style="margin-right: 5px; padding: 4px;">
-                    <option value="">Cambiar estado...</option>
-                    <option value="disponible" ${lab.estado === 'disponible' ? 'disabled' : ''}>Disponible</option>
-                    <option value="mantenimiento" ${lab.estado === 'mantenimiento' ? 'disabled' : ''}>Mantenimiento</option>
-                    <option value="fuera_servicio" ${lab.estado === 'fuera_servicio' ? 'disabled' : ''}>Fuera de Servicio</option>
-                </select>
-                <button class="btn btn-amarillo" onclick="editarLaboratorio(${lab.id_laboratorio})" style="margin-right: 5px;">
-                    Editar
-                </button>
-                <button class="btn btn-rojo" onclick="eliminarLaboratorio(${lab.id_laboratorio})">
-                    Eliminar
-                </button>
-            </td>
-        `;
-        tbody.appendChild(fila);
-    });
-    
-    console.log(`${laboratoriosLocal.length} laboratorios cargados`);
-}
-
-function cambiarEstadoLab(id, nuevoEstado) {
-    if (!nuevoEstado) return;
-    
-    const lab = laboratoriosLocal.find(l => l.id_laboratorio === id);
-    if (lab) {
-        lab.estado = nuevoEstado;
-        alert(`Estado del laboratorio "${lab.nombre}" cambiado a: ${nuevoEstado.toUpperCase()}`);
-        cargarLaboratoriosGestion();
-        
-        // Actualizar estadísticas si estamos en esa vista
-        const seccionEstadisticas = document.getElementById('estadisticas');
-        if (seccionEstadisticas && seccionEstadisticas.style.display !== 'none') {
-            actualizarNumeros();
-            setTimeout(generarGraficas, 100);
-        }
-    }
-}
-
-function editarLaboratorio(id) {
-    const lab = laboratoriosLocal.find(l => l.id_laboratorio === id);
-    if (!lab) return alert('Laboratorio no encontrado');
-    
-    const nuevoNombre = prompt('Nombre:', lab.nombre);
-    if (nuevoNombre === null) return;
-    
-    const nuevaUbicacion = prompt('Ubicación:', lab.ubicacion);
-    if (nuevaUbicacion === null) return;
-    
-    const nuevaCapacidad = prompt('Capacidad:', lab.capacidad);
-    if (nuevaCapacidad === null) return;
-    
-    if (nuevoNombre.trim() && nuevaUbicacion.trim() && nuevaCapacidad > 0) {
-        lab.nombre = nuevoNombre.trim();
-        lab.ubicacion = nuevaUbicacion.trim();
-        lab.capacidad = parseInt(nuevaCapacidad);
-        
-        alert(`Laboratorio "${lab.nombre}" actualizado correctamente`);
-        cargarLaboratoriosGestion();
-    } else {
-        alert('Datos inválidos');
-    }
-}
-
-function eliminarLaboratorio(id) {
-    const lab = laboratoriosLocal.find(l => l.id_laboratorio === id);
-    if (!lab) return alert('Laboratorio no encontrado');
-    
-    if (confirm(`¿Eliminar el laboratorio "${lab.nombre}"?`)) {
-        laboratoriosLocal = laboratoriosLocal.filter(l => l.id_laboratorio !== id);
-        alert(`Laboratorio "${lab.nombre}" eliminado`);
-        cargarLaboratoriosGestion();
-        
-        // Actualizar estadísticas
-        const seccionEstadisticas = document.getElementById('estadisticas');
-        if (seccionEstadisticas && seccionEstadisticas.style.display !== 'none') {
-            actualizarNumeros();
-            setTimeout(generarGraficas, 100);
-        }
-    }
-}
-
-function agregarNuevoUsuario() {
-    console.log("Agregando nuevo usuario...");
-    if (typeof mostrarFormularioNuevoUsuario === 'function') {
-        mostrarFormularioNuevoUsuario();
-    } else {
-        alert('Función de agregar usuario no disponible');
-    }
-}
-
 console.log("Dashboard del encargado inicializado correctamente");
 
-// Al final del archivo, agregar integración con geolocalización
+// Widget de ubicación
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Dashboard del encargado - DOM cargado');
-    
-    // Verificar si el widget de ubicación está presente
     const locationWidget = document.querySelector('.location-time-widget');
     if (locationWidget) {
-        console.log('✅ Widget de ubicación detectado');
-        
-        // Agregar funcionalidad adicional si es necesario
-        locationWidget.addEventListener('click', function() {
-            // Forzar actualización de ubicación al hacer clic
-            if (window.GeolocationService) {
-                console.log('🔄 Actualizando ubicación manualmente...');
-                // La instancia se creará automáticamente por geolocation.js
-            }
-        });
+        console.log('Widget de ubicacion detectado');
     }
 });
+
+// ===== ACTUALIZACIÓN AUTOMÁTICA (cada 30 segundos) =====
+setInterval(function() {
+    const seccionVisible = document.querySelector('.seccion:not([style*="display: none"])');
+    if (!seccionVisible) return;
+    
+    const id = seccionVisible.id;
+    
+    switch(id) {
+        case 'estadisticas':
+            if (typeof cargarEstadisticas === 'function') cargarEstadisticas();
+            break;
+        case 'solicitudes':
+            if (typeof cargarSolicitudesEncargado === 'function') cargarSolicitudesEncargado();
+            break;
+        case 'laboratorios':
+            if (typeof recargarTablaLaboratorios === 'function') recargarTablaLaboratorios();
+            break;
+        case 'mantenimiento':
+            if (typeof cargarMantenimientos === 'function') cargarMantenimientos();
+            break;
+        case 'usuarios':
+            if (typeof cargarUsuarios === 'function') cargarUsuarios();
+            break;
+    }
+}, 30000);

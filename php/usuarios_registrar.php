@@ -5,90 +5,96 @@
  * SOLO EL ENCARGADO PUEDE CREAR USUARIOS.
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-
-error_reporting(0);
-ini_set('display_errors', 0);
 ob_start();
+ini_set('display_errors', 0);
+error_reporting(0);
+header('Content-Type: application/json; charset=utf-8');
+
+require_once 'conexion.php';
 
 try {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Método no permitido');
+    // Usar $conexion o $conn
+    $db = isset($conexion) ? $conexion : (isset($conn) ? $conn : null);
+    
+    if (!$db) {
+        throw new Exception('Error de conexión a la base de datos');
     }
-    
-    require_once 'conexion.php';
-    
-    if (!isset($conexion) || $conexion->connect_error) {
-        throw new Exception('Error de conexión');
-    }
-    
-    ob_clean();
-    
-    // Obtener y validar datos
-    $nombre = trim($_POST['nombre'] ?? '');
-    $correo = trim($_POST['correo'] ?? '');
-    $rol = trim($_POST['rol'] ?? '');
-    $password = $_POST['password'] ?? '123456';
-    
+
+    // Obtener datos
+    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
+    $correo = isset($_POST['correo']) ? trim($_POST['correo']) : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+    $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
+
+    // Validaciones
     if (empty($nombre)) {
-        throw new Exception('El nombre es requerido');
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'El nombre es requerido']);
+        exit;
     }
-    
-    if (empty($correo)) {
-        throw new Exception('El correo es requerido');
+
+    if (empty($correo) || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Correo electrónico inválido']);
+        exit;
     }
-    
-    if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-        throw new Exception('Formato de correo inválido');
+
+    if (empty($password)) {
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'La contraseña es requerida']);
+        exit;
     }
-    
-    if (!preg_match('/@uabc\.edu\.mx$/', $correo)) {
-        throw new Exception('El correo debe ser institucional (@uabc.edu.mx)');
+
+    if (strlen($password) < 6) {
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'La contraseña debe tener al menos 6 caracteres']);
+        exit;
     }
-    
+
     if (!in_array($rol, ['alumno', 'maestro', 'encargado'])) {
-        throw new Exception('Rol inválido');
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Rol inválido']);
+        exit;
     }
-    
-    // Verificar si el correo ya existe
-    $stmt = $conexion->prepare("SELECT id_usuario FROM usuarios WHERE correo = ?");
+
+    // Verificar correo duplicado
+    $stmt = $db->prepare("SELECT id_usuario FROM usuarios WHERE correo = ?");
     $stmt->bind_param("s", $correo);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        throw new Exception('Ya existe un usuario con este correo');
-    }
-    $stmt->close();
-    
-    // Insertar nuevo usuario
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $conexion->prepare("INSERT INTO usuarios (nombre, correo, password, rol, fecha_registro) VALUES (?, ?, ?, ?, NOW())");
-    $stmt->bind_param("ssss", $nombre, $correo, $password_hash, $rol);
-    
-    if ($stmt->execute()) {
-        $response = [
-            'status' => 'ok',
-            'mensaje' => 'Usuario creado exitosamente',
-            'id_usuario' => $conexion->insert_id
-        ];
-    } else {
-        throw new Exception('Error al crear usuario');
-    }
-    
-    $stmt->close();
-    $conexion->close();
-    
-} catch (Exception $e) {
-    $response = [
-        'status' => 'error',
-        'mensaje' => $e->getMessage()
-    ];
-}
+    $resultado = $stmt->get_result();
 
-ob_end_clean();
-echo json_encode($response, JSON_UNESCAPED_UNICODE);
-exit;
+    if ($resultado->num_rows > 0) {
+        $stmt->close();
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'El correo electrónico ya está registrado']);
+        exit;
+    }
+    $stmt->close();
+
+    // Hash de contraseña
+    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+
+    // Insertar - COLUMNA CORRECTA: contrasena
+    $stmt = $db->prepare("INSERT INTO usuarios (nombre, correo, contrasena, rol) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("ssss", $nombre, $correo, $password_hash, $rol);
+
+    if ($stmt->execute()) {
+        $id = $db->insert_id;
+        $stmt->close();
+        
+        ob_clean();
+        echo json_encode(['ok' => true, 'msg' => 'Usuario registrado exitosamente', 'id_usuario' => $id]);
+    } else {
+        $error = $stmt->error;
+        $stmt->close();
+        
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Error al registrar: ' . $error]);
+    }
+
+} catch (Exception $e) {
+    ob_clean();
+    echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+}
 ?>
 

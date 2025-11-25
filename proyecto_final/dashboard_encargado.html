@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Encargado - UABC</title>
-    <link rel="stylesheet" href="css/dashboard-encargado.css?v=2">
+    <link rel="stylesheet" href="css/dashboard-encargado.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -46,7 +46,7 @@
             <!-- Nuevo widget de ubicación y hora -->
             <div class="location-time-widget">
                 <div class="widget-header">
-                    <h3>Información Actual</h3>
+                    <h3>🌍 Información Actual</h3>
                 </div>
                 <div class="widget-content">
                     <div class="time-section">
@@ -56,15 +56,15 @@
                     <div class="location-section">
                         <div class="location-info">
                             <div class="location-item">
-                                <span class="location-label">Ubicación:</span>
+                                <span class="location-label">📍 Ubicación:</span>
                                 <span class="location-value" id="currentLocation">Obteniendo...</span>
                             </div>
                             <div class="location-item">
-                                <span class="location-label">Temperatura:</span>
+                                <span class="location-label">🌡️ Temperatura:</span>
                                 <span class="location-value" id="currentTemperature">--°C</span>
                             </div>
                             <div class="location-item">
-                                <span class="location-label">Campus:</span>
+                                <span class="location-label">🏛️ Campus:</span>
                                 <span class="location-value" id="campusInfo">UABC</span>
                             </div>
                         </div>
@@ -140,54 +140,49 @@
         </div>
 
         <!-- SECCIÓN: GESTIÓN DE LABORATORIOS -->
-        <div id="laboratorios" class="seccion" style="display: none;">
+        <div id="laboratorios" class="seccion" style="display:none;">
             <h3>Gestión de Laboratorios</h3>
-            
-            <button onclick="mostrarFormNuevoLab()" class="btn btn-primary" style="margin-bottom: 20px;">
-                + Nuevo Laboratorio
-            </button>
-            
-            <!-- FORMULARIO CON ID Y ONSUBMIT CORRECTOS -->
-            <div id="formLaboratorioContainer" style="display: none; margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                <h4>Datos del Laboratorio</h4>
-                <form id="formLaboratorio" onsubmit="return guardarLaboratorio(event)">
+
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="mostrarFormLaboratorio()">Nuevo Laboratorio</button>
+            </div>
+
+            <!-- Formulario para nuevo/editar laboratorio -->
+            <div id="formLaboratorioContainer">
+                <h4>Laboratorio</h4>
+                <form id="formLaboratorio">
                     <input type="hidden" id="lab_id_laboratorio" name="id_laboratorio">
                     
                     <div class="form-group">
-                        <label>Nombre del Laboratorio *</label>
-                        <input type="text" id="lab_nombre" name="nombre" required 
-                               placeholder="Ej: Laboratorio de Computación 1">
+                        <label for="lab_nombre">Nombre:</label>
+                        <input type="text" id="lab_nombre" name="nombre" required>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label>Ubicación *</label>
-                        <input type="text" id="lab_ubicacion" name="ubicacion" required 
-                               placeholder="Ej: Edificio A - Planta Baja">
+                        <label for="lab_ubicacion">Ubicación:</label>
+                        <input type="text" id="lab_ubicacion" name="ubicacion" required>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label>Capacidad (personas) *</label>
-                        <input type="number" id="lab_capacidad" name="capacidad" required min="1" max="100" 
-                               placeholder="Ej: 30">
+                        <label for="lab_capacidad">Capacidad:</label>
+                        <input type="number" id="lab_capacidad" name="capacidad" min="1" required>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label>Estado *</label>
+                        <label for="lab_estado">Estado:</label>
                         <select id="lab_estado" name="estado" required>
                             <option value="disponible">Disponible</option>
                             <option value="mantenimiento">En Mantenimiento</option>
                             <option value="fuera_servicio">Fuera de Servicio</option>
                         </select>
                     </div>
-                    
-                    <div style="display: flex; gap: 10px;">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                        <button type="button" onclick="cancelarFormLaboratorio()" class="btn btn-secondary">Cancelar</button>
-                    </div>
+
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-rojo" onclick="cancelarFormLaboratorio()">Cancelar</button>
                 </form>
             </div>
-            
-            <!-- TABLA CON ID CORRECTO -->
+
+            <!-- Lista de laboratorios -->
             <table id="tablaLaboratorios">
                 <thead>
                     <tr>
@@ -200,79 +195,84 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td colspan="6">Cargando...</td></tr>
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 20px;">
+                            Cargando laboratorios...
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
         <!-- SECCIÓN: MANTENIMIENTO -->
-        <div id="mantenimiento" class="seccion" style="display: none;">
-            <h3 class="section-title">Mantenimiento de Laboratorios</h3>
-            
-            <div class="mantenimiento-container">
-                <div class="form-card">
-                    <h4 class="form-title">Registrar Nuevo Mantenimiento</h4>
-                    
-                    <form id="formMantenimiento">
-                        <div class="form-group">
-                            <label>Laboratorio:</label>
-                            <select id="mant_laboratorio" name="laboratorio" required class="form-control">
-                                <option value="">Seleccionar laboratorio...</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Tipo de mantenimiento:</label>
-                            <select name="tipo" required class="form-control">
-                                <option value="">Seleccionar tipo...</option>
-                                <option value="preventivo">Preventivo</option>
-                                <option value="correctivo">Correctivo</option>
-                                <option value="limpieza">Limpieza</option>
-                                <option value="actualizacion">Actualización</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Descripción:</label>
-                            <textarea name="descripcion" required rows="3" placeholder="Descripción del mantenimiento..." class="form-control"></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Fecha de inicio:</label>
-                            <input type="datetime-local" name="fecha_inicio" required class="form-control">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Fecha estimada de finalización:</label>
-                            <input type="datetime-local" name="fecha_fin_estimada" class="form-control">
-                        </div>
-                        
-                        <div class="form-buttons">
-                            <button type="submit" class="btn-registrar">Registrar Mantenimiento</button>
-                            <button type="reset" class="btn-limpiar">Limpiar Formulario</button>
-                        </div>
-                    </form>
-                </div>
+        <div id="mantenimiento" class="seccion" style="display:none;">
+            <h3>Mantenimiento de Laboratorios</h3>
+
+            <!-- Formulario de registro de mantenimiento -->
+            <div id="formMantenimiento">
+                <h4>Registrar Nuevo Mantenimiento</h4>
                 
-                <!-- Tabla de mantenimientos -->
-                <table id="tablaMantenimientos">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Laboratorio</th>
-                            <th>Tipo</th>
-                            <th>Descripción</th>
-                            <th>Fecha Inicio</th>
-                            <th>Fecha Fin</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td colspan="8" style="text-align: center; padding: 40px;">Cargando...</td></tr>
-                    </tbody>
-                </table>
+                <form id="formMantenimientoForm">
+                    <div class="form-group">
+                        <label for="mant_laboratorio">Laboratorio:</label>
+                        <select id="mant_laboratorio" name="id_laboratorio" required>
+                            <option value="">Seleccionar laboratorio...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mant_tipo">Tipo de mantenimiento:</label>
+                        <select id="mant_tipo" name="tipo" required>
+                            <option value="">Seleccionar tipo...</option>
+                            <option value="preventivo">Preventivo</option>
+                            <option value="correctivo">Correctivo</option>
+                            <option value="limpieza">Limpieza</option>
+                            <option value="actualizacion">Actualización</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mant_descripcion">Descripción:</label>
+                        <textarea id="mant_descripcion" name="descripcion" placeholder="Describe el trabajo de mantenimiento a realizar..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mant_fecha_inicio">Fecha de inicio:</label>
+                        <input type="datetime-local" id="mant_fecha_inicio" name="fecha_inicio" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mant_fecha_fin">Fecha estimada de finalización:</label>
+                        <input type="datetime-local" id="mant_fecha_fin" name="fecha_fin" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Registrar Mantenimiento</button>
+                    <button type="reset" class="btn btn-amarillo">Limpiar Formulario</button>
+                </form>
             </div>
+
+            <!-- Lista de mantenimientos -->
+            <table id="tablaMantenimientos">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Laboratorio</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 20px;">
+                            Cargando mantenimientos...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- SECCIÓN: GESTIÓN DE USUARIOS -->
@@ -280,7 +280,7 @@
             <h3>Gestión de Usuarios</h3>
             
             <div style="margin-bottom: 20px;">
-                <button onclick="agregarNuevoUsuario()" class="btn btn-primary" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                <button onclick="agregarNuevoUsuario()" class="btn btn-verde">
                     Nuevo Usuario
                 </button>
             </div>
@@ -307,13 +307,15 @@
         </div>
     </div>
 
-    <!-- Scripts - USUARIOS.JS DEBE IR AL FINAL para sobrescribir -->
-    <script src="js/logout.js?v=1"></script>
-    <script src="js/encargado.js?v=2"></script>
-    <script src="js/mantenimientos.js?v=3"></script>
-    <script src="js/chart.js?v=1"></script>
-    <script src="js/dashboard-encargado.js?v=3"></script>
-    <script src="js/geolocation.js?v=1"></script>
-    <script src="js/usuarios.js?v=9"></script> <!-- AL FINAL para sobrescribir -->
+    <!-- Scripts existentes -->
+    <script src="js/logout.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/usuarios.js"></script>
+    <script src="js/encargado.js"></script>
+    <script src="js/mantenimientos.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/dashboard-encargado.js"></script>
+    <!-- Nuevo script para geolocalización -->
+    <script src="js/geolocation.js"></script>
 </body>
 </html>

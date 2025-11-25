@@ -5,94 +5,84 @@
  * SOLO EL ENCARGADO PUEDE MODIFICAR.
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-
-error_reporting(0);
-ini_set('display_errors', 0);
 ob_start();
+ini_set('display_errors', 0);
+error_reporting(0);
+header('Content-Type: application/json; charset=utf-8');
+
+require_once 'conexion.php';
 
 try {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Método no permitido');
-    }
+    $db = isset($conexion) ? $conexion : (isset($conn) ? $conn : null);
     
-    require_once 'conexion.php';
-    
-    if (!isset($conexion) || $conexion->connect_error) {
+    if (!$db) {
         throw new Exception('Error de conexión');
     }
-    
-    ob_clean();
-    
-    // Obtener datos
-    $id_usuario = (int)($_POST['id_usuario'] ?? 0);
-    $nombre = trim($_POST['nombre'] ?? '');
-    $correo = trim($_POST['correo'] ?? '');
-    $rol = trim($_POST['rol'] ?? '');
-    
-    if ($id_usuario <= 0) {
-        throw new Exception('ID de usuario inválido');
-    }
-    
-    if (empty($nombre) || empty($correo) || empty($rol)) {
-        throw new Exception('Todos los campos son requeridos');
-    }
-    
-    if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-        throw new Exception('Formato de correo inválido');
-    }
-    
-    if (!preg_match('/@uabc\.edu\.mx$/', $correo)) {
-        throw new Exception('El correo debe ser institucional (@uabc.edu.mx)');
-    }
-    
-    if (!in_array($rol, ['alumno', 'maestro', 'encargado'])) {
-        throw new Exception('Rol inválido');
-    }
-    
-    // Verificar que el correo no esté en uso por otro usuario
-    $stmt = $conexion->prepare("SELECT id_usuario FROM usuarios WHERE correo = ? AND id_usuario != ?");
-    $stmt->bind_param("si", $correo, $id_usuario);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        throw new Exception('Ya existe otro usuario con este correo');
-    }
-    $stmt->close();
-    
-    // Actualizar usuario
-    $stmt = $conexion->prepare("UPDATE usuarios SET nombre = ?, correo = ?, rol = ? WHERE id_usuario = ?");
-    $stmt->bind_param("sssi", $nombre, $correo, $rol, $id_usuario);
-    
-    if ($stmt->execute()) {
-        if ($stmt->affected_rows > 0) {
-            $response = [
-                'status' => 'ok',
-                'mensaje' => 'Usuario actualizado exitosamente'
-            ];
-        } else {
-            $response = [
-                'status' => 'ok',
-                'mensaje' => 'No se realizaron cambios (datos idénticos)'
-            ];
-        }
-    } else {
-        throw new Exception('Error al actualizar usuario');
-    }
-    
-    $stmt->close();
-    $conexion->close();
-    
-} catch (Exception $e) {
-    $response = [
-        'status' => 'error',
-        'mensaje' => $e->getMessage()
-    ];
-}
 
-ob_end_clean();
-echo json_encode($response, JSON_UNESCAPED_UNICODE);
-exit;
+    $id = isset($_POST['id_usuario']) ? intval($_POST['id_usuario']) : 0;
+    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
+    $correo = isset($_POST['correo']) ? trim($_POST['correo']) : '';
+    $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
+    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+
+    if ($id <= 0 || empty($nombre) || empty($correo) || empty($rol)) {
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Faltan datos requeridos']);
+        exit;
+    }
+
+    if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Correo inválido']);
+        exit;
+    }
+
+    if (!in_array($rol, ['alumno', 'maestro', 'encargado'])) {
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Rol inválido']);
+        exit;
+    }
+
+    // Verificar correo duplicado
+    $stmt = $db->prepare("SELECT id_usuario FROM usuarios WHERE correo = ? AND id_usuario != ?");
+    $stmt->bind_param("si", $correo, $id);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows > 0) {
+        $stmt->close();
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'El correo ya está en uso']);
+        exit;
+    }
+    $stmt->close();
+
+    // Actualizar - COLUMNA CORRECTA: contrasena
+    if (!empty($password)) {
+        if (strlen($password) < 6) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'La contraseña debe tener al menos 6 caracteres']);
+            exit;
+        }
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $db->prepare("UPDATE usuarios SET nombre=?, correo=?, contrasena=?, rol=? WHERE id_usuario=?");
+        $stmt->bind_param("ssssi", $nombre, $correo, $hash, $rol, $id);
+    } else {
+        $stmt = $db->prepare("UPDATE usuarios SET nombre=?, correo=?, rol=? WHERE id_usuario=?");
+        $stmt->bind_param("sssi", $nombre, $correo, $rol, $id);
+    }
+
+    if ($stmt->execute()) {
+        $stmt->close();
+        ob_clean();
+        echo json_encode(['ok' => true, 'msg' => 'Usuario actualizado']);
+    } else {
+        $error = $stmt->error;
+        $stmt->close();
+        ob_clean();
+        echo json_encode(['ok' => false, 'error' => 'Error: ' . $error]);
+    }
+
+} catch (Exception $e) {
+    ob_clean();
+    echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+}
 ?>

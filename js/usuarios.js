@@ -1,339 +1,280 @@
-// ===============================================
-// GESTIÓN DE USUARIOS PARA ENCARGADOS
-// ===============================================
+// ===========================================
+// usuarios.js - Gestión de usuarios v8
+// ===========================================
+console.log("✅ [USUARIOS v8] Cargando...");
 
 /**
- * Cargar usuarios desde el servidor
+ * Cargar usuarios en la tabla
  */
-async function cargarUsuarios() {
-    console.log("🔄 Cargando usuarios desde servidor...");
+window.cargarUsuarios = async function() {
+    console.log("👥 [USUARIOS] Cargando lista...");
     
-    try {
-        const response = await fetch('php/usuarios_obtener.php');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const text = await response.text();
-        console.log("📄 Response recibido:", text.substring(0, 200));
-        
-        // Intentar parsear JSON
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (parseError) {
-            console.error("❌ Error parsing JSON:", parseError);
-            console.error("❌ Respuesta completa:", text);
-            throw new Error('El servidor no devolvió JSON válido');
-        }
-        
-        console.log("📦 Data parseada:", data);
-        
-        if (data.status === 'ok') {
-            mostrarUsuariosEnTabla(data.usuarios || []);
-        } else {
-            throw new Error(data.mensaje || 'Error desconocido del servidor');
-        }
-        
-    } catch (error) {
-        console.error("❌ Error cargando usuarios:", error);
-        mostrarErrorUsuarios('Error al cargar usuarios: ' + error.message);
-    }
-}
-
-/**
- * Mostrar usuarios en la tabla
- */
-function mostrarUsuariosEnTabla(usuarios) {
     const tbody = document.querySelector("#tablaUsuarios tbody");
-    
-    if (!tbody) {
-        console.error("❌ Tabla de usuarios no encontrada");
-        return;
-    }
-    
-    console.log("👥 Mostrando", usuarios.length, "usuarios en tabla");
-    
-    if (usuarios.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
-                    <div style="font-size: 64px; margin-bottom: 20px;">👥</div>
-                    <div style="font-size: 18px; margin-bottom: 10px; font-weight: bold;">No hay usuarios registrados</div>
-                    <div style="font-size: 14px; color: #999;">Use el botón "➕ Nuevo Usuario" para crear uno</div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    tbody.innerHTML = usuarios.map(usuario => {
-        // Color del rol
-        let rolColor = '#6c757d';
-        let rolTexto = usuario.rol.toUpperCase();
-        
-        switch(usuario.rol) {
-            case 'alumno':
-                rolColor = '#17a2b8';
-                rolTexto = '👨‍🎓 ALUMNO';
-                break;
-            case 'maestro':
-                rolColor = '#28a745';
-                rolTexto = '👨‍🏫 MAESTRO';
-                break;
-            case 'encargado':
-                rolColor = '#dc3545';
-                rolTexto = '👨‍💼 ENCARGADO';
-                break;
-        }
-        
-        return `
-            <tr>
-                <td style="font-weight: bold; color: #495057; padding: 12px;">${usuario.id_usuario}</td>
-                <td style="font-weight: bold; color: #212529; padding: 12px;">${usuario.nombre}</td>
-                <td style="color: #6c757d; padding: 12px;">${usuario.correo}</td>
-                <td style="text-align: center; padding: 12px;">
-                    <span style="
-                        background-color: ${rolColor}; 
-                        color: white; 
-                        padding: 6px 12px; 
-                        border-radius: 15px; 
-                        font-size: 11px; 
-                        font-weight: bold;
-                        letter-spacing: 0.5px;
-                        display: inline-block;
-                    ">
-                        ${rolTexto}
-                    </span>
-                </td>
-                <td style="color: #6c757d; text-align: center; padding: 12px;">${usuario.fecha_registro}</td>
-                <td style="text-align: center; padding: 12px;">
-                    <button onclick="editarUsuario(${usuario.id_usuario})" style="
-                        background: #ffc107; 
-                        color: #212529; 
-                        border: none; 
-                        padding: 6px 12px; 
-                        margin-right: 5px; 
-                        border-radius: 4px; 
-                        cursor: pointer; 
-                        font-weight: bold;
-                        font-size: 12px;
-                    " title="Editar usuario">
-                        ✏️ Editar
-                    </button>
-                    <button onclick="eliminarUsuario(${usuario.id_usuario})" style="
-                        background: #dc3545; 
-                        color: white; 
-                        border: none; 
-                        padding: 6px 12px; 
-                        border-radius: 4px; 
-                        cursor: pointer; 
-                        font-weight: bold;
-                        font-size: 12px;
-                    " title="Eliminar usuario">
-                        🗑️ Eliminar
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+    if (!tbody) return;
 
-/**
- * Agregar nuevo usuario
- */
-async function agregarNuevoUsuario() {
-    console.log("➕ Iniciando creación de nuevo usuario...");
-    
-    const nombre = prompt('👤 Nombre completo del usuario:');
-    if (!nombre || !nombre.trim()) {
-        console.log("Nombre cancelado o vacío");
-        return;
-    }
-    
-    const correo = prompt('📧 Correo institucional (debe terminar en @uabc.edu.mx):');
-    if (!correo || !correo.includes('@uabc.edu.mx')) {
-        alert('❌ El correo debe ser institucional y terminar en @uabc.edu.mx');
-        return;
-    }
-    
-    const rol = prompt('🎭 Rol del usuario:\n\n• Escribe "alumno" para estudiante\n• Escribe "maestro" para profesor\n• Escribe "encargado" para administrador');
-    if (!rol || !['alumno', 'maestro', 'encargado'].includes(rol.toLowerCase())) {
-        alert('❌ Rol inválido. Debe escribir exactamente: alumno, maestro o encargado');
-        return;
-    }
-    
-    try {
-        const formData = new FormData();
-        formData.append('nombre', nombre.trim());
-        formData.append('correo', correo.trim().toLowerCase());
-        formData.append('rol', rol.toLowerCase());
-        formData.append('password', '123456'); // Contraseña por defecto
-        
-        const response = await fetch('php/usuarios_registrar.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const text = await response.text();
-        console.log("📄 Response:", text);
-        
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (parseError) {
-            throw new Error('Respuesta del servidor inválida');
-        }
-        
-        if (data.status === 'ok') {
-            alert(`✅ Usuario creado exitosamente!\n\n👤 Nombre: ${nombre}\n📧 Correo: ${correo}\n🎭 Rol: ${rol}\n🔑 Contraseña inicial: 123456`);
-            cargarUsuarios(); // Recargar tabla
-        } else {
-            alert('❌ Error: ' + (data.mensaje || 'Error desconocido'));
-        }
-        
-    } catch (error) {
-        console.error("❌ Error creando usuario:", error);
-        alert('❌ Error al crear usuario: ' + error.message);
-    }
-}
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">🔄 Cargando...</td></tr>';
 
-/**
- * Editar usuario existente
- */
-async function editarUsuario(id) {
-    console.log(`✏️ Editando usuario ID: ${id}`);
-    
-    // Primero obtener datos actuales del usuario
     try {
-        const response = await fetch(`php/usuarios_obtener.php?id=${id}`);
+        const response = await fetch("php/usuarios_obtener.php");
         const data = await response.json();
         
-        if (data.status !== 'ok' || !data.usuario) {
-            alert('❌ Usuario no encontrado');
+        tbody.innerHTML = "";
+        const usuarios = data.usuarios || [];
+        
+        if (usuarios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 30px;">📭 No hay usuarios</td></tr>';
             return;
         }
-        
-        const usuario = data.usuario;
-        
-        const nuevoNombre = prompt(`📝 Nombre completo (actual: ${usuario.nombre}):`, usuario.nombre);
-        if (nuevoNombre === null) return; // Cancelado
-        
-        const nuevoCorreo = prompt(`📧 Correo (actual: ${usuario.correo}):`, usuario.correo);
-        if (nuevoCorreo === null) return;
-        
-        if (!nuevoCorreo.includes('@uabc.edu.mx')) {
-            alert('❌ El correo debe ser institucional (@uabc.edu.mx)');
-            return;
-        }
-        
-        const nuevoRol = prompt(`🎭 Rol (actual: ${usuario.rol}).\nOpciones: alumno, maestro, encargado:`, usuario.rol);
-        if (nuevoRol === null) return;
-        
-        if (!['alumno', 'maestro', 'encargado'].includes(nuevoRol.toLowerCase())) {
-            alert('❌ Rol inválido. Use: alumno, maestro o encargado');
-            return;
-        }
-        
-        // Enviar actualización
-        const formData = new FormData();
-        formData.append('id_usuario', id);
-        formData.append('nombre', nuevoNombre.trim());
-        formData.append('correo', nuevoCorreo.trim().toLowerCase());
-        formData.append('rol', nuevoRol.toLowerCase());
-        
-        const updateResponse = await fetch('php/usuarios_actualizar.php', {
-            method: 'POST',
-            body: formData
+
+        usuarios.forEach(u => {
+            let badge = '';
+            if (u.rol === 'alumno') badge = '<span style="background:#17a2b8;color:white;padding:5px 10px;border-radius:12px;font-size:11px;">🎓 ALUMNO</span>';
+            else if (u.rol === 'maestro') badge = '<span style="background:#28a745;color:white;padding:5px 10px;border-radius:12px;font-size:11px;">👨‍🏫 MAESTRO</span>';
+            else if (u.rol === 'encargado') badge = '<span style="background:#dc3545;color:white;padding:5px 10px;border-radius:12px;font-size:11px;">👤 ENCARGADO</span>';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${u.id_usuario}</td>
+                <td>${u.nombre}</td>
+                <td>${u.correo}</td>
+                <td style="text-align:center;">${badge}</td>
+                <td>${u.fecha_registro || 'N/A'}</td>
+                <td style="text-align:center;">
+                    <button onclick="editarUsuario(${u.id_usuario})" style="padding:6px 12px;background:#ffc107;color:black;border:none;border-radius:4px;cursor:pointer;margin-right:5px;">✏️ Editar</button>
+                    <button onclick="eliminarUsuario(${u.id_usuario})" style="padding:6px 12px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;">🗑️ Eliminar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
         
-        const updateData = await updateResponse.json();
-        
-        if (updateData.status === 'ok') {
-            alert(`✅ Usuario actualizado correctamente`);
-            cargarUsuarios(); // Recargar tabla
-        } else {
-            alert('❌ Error: ' + (updateData.mensaje || 'Error desconocido'));
-        }
-        
+        console.log(`✅ [USUARIOS] ${usuarios.length} cargados`);
     } catch (error) {
-        console.error("❌ Error editando usuario:", error);
-        alert('❌ Error al editar usuario: ' + error.message);
+        console.error("❌ [USUARIOS] Error:", error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">❌ Error al cargar</td></tr>';
     }
-}
+};
+
+/**
+ * Abrir modal nuevo usuario
+ */
+window.agregarNuevoUsuario = function() {
+    console.log("➕ [USUARIOS v8] Abriendo modal nuevo usuario");
+    cerrarModalUsuario();
+    
+    const html = `
+    <div id="modalUsuario" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;">
+        <div style="background:white;padding:30px;border-radius:15px;width:90%;max-width:450px;">
+            <h3 style="margin-bottom:20px;text-align:center;">➕ Nuevo Usuario</h3>
+            
+            <div style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-weight:bold;">Nombre: *</label>
+                <input type="text" id="usr_nombre" placeholder="Juan Pérez" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+            </div>
+            
+            <div style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-weight:bold;">Correo: *</label>
+                <input type="email" id="usr_correo" placeholder="correo@uabc.edu.mx" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+            </div>
+            
+            <div style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-weight:bold;">Contraseña: *</label>
+                <input type="password" id="usr_password" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+            </div>
+            
+            <div style="margin-bottom:20px;">
+                <label style="display:block;margin-bottom:5px;font-weight:bold;">Rol: *</label>
+                <select id="usr_rol" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                    <option value="">Seleccionar...</option>
+                    <option value="alumno">🎓 Alumno</option>
+                    <option value="maestro">👨‍🏫 Maestro</option>
+                    <option value="encargado">👤 Encargado</option>
+                </select>
+            </div>
+            
+            <div style="display:flex;gap:10px;">
+                <button onclick="guardarUsuarioNuevo()" style="flex:1;padding:14px;background:linear-gradient(135deg,#11998e,#38ef7d);color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">💾 Guardar</button>
+                <button onclick="cerrarModalUsuario()" style="flex:1;padding:14px;background:#6c757d;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('usr_nombre').focus();
+};
+
+/**
+ * Guardar usuario nuevo
+ */
+window.guardarUsuarioNuevo = async function() {
+    const nombre = document.getElementById('usr_nombre').value.trim();
+    const correo = document.getElementById('usr_correo').value.trim();
+    const password = document.getElementById('usr_password').value;
+    const rol = document.getElementById('usr_rol').value;
+
+    console.log("💾 [USUARIOS v8] Guardando:", { nombre, correo, rol, passLen: password.length });
+
+    if (!nombre) { alert("❌ Ingresa el nombre"); return; }
+    if (!correo) { alert("❌ Ingresa el correo"); return; }
+    if (!password) { alert("❌ Ingresa la contraseña"); return; }
+    if (password.length < 6) { alert("❌ La contraseña debe tener al menos 6 caracteres"); return; }
+    if (!rol) { alert("❌ Selecciona un rol"); return; }
+
+    const fd = new FormData();
+    fd.append('nombre', nombre);
+    fd.append('correo', correo);
+    fd.append('password', password);
+    fd.append('rol', rol);
+
+    try {
+        const res = await fetch("php/usuarios_registrar.php", { method: "POST", body: fd });
+        const txt = await res.text();
+        console.log("📄 [USUARIOS] Response:", txt);
+        
+        const data = JSON.parse(txt);
+        
+        if (data.ok) {
+            alert("✅ Usuario registrado");
+            cerrarModalUsuario();
+            cargarUsuarios();
+        } else {
+            alert("❌ " + (data.error || "Error desconocido"));
+        }
+    } catch (e) {
+        console.error("❌ Error:", e);
+        alert("❌ Error de conexión");
+    }
+};
+
+/**
+ * Editar usuario
+ */
+window.editarUsuario = async function(id) {
+    console.log("✏️ [USUARIOS] Editando ID:", id);
+    
+    try {
+        const res = await fetch("php/usuarios_obtener.php");
+        const data = await res.json();
+        const u = (data.usuarios || []).find(x => x.id_usuario == id);
+        
+        if (!u) { alert("❌ Usuario no encontrado"); return; }
+        
+        cerrarModalUsuario();
+        
+        const html = `
+        <div id="modalUsuario" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;">
+            <div style="background:white;padding:30px;border-radius:15px;width:90%;max-width:450px;">
+                <h3 style="margin-bottom:20px;text-align:center;">✏️ Editar Usuario</h3>
+                <input type="hidden" id="usr_id" value="${id}">
+                
+                <div style="margin-bottom:15px;">
+                    <label style="display:block;margin-bottom:5px;font-weight:bold;">Nombre: *</label>
+                    <input type="text" id="usr_nombre" value="${u.nombre}" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="display:block;margin-bottom:5px;font-weight:bold;">Correo: *</label>
+                    <input type="email" id="usr_correo" value="${u.correo}" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="display:block;margin-bottom:5px;font-weight:bold;">Nueva Contraseña: (vacío = no cambiar)</label>
+                    <input type="password" id="usr_password" placeholder="Dejar vacío si no cambia" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                </div>
+                
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;margin-bottom:5px;font-weight:bold;">Rol: *</label>
+                    <select id="usr_rol" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                        <option value="alumno" ${u.rol==='alumno'?'selected':''}>🎓 Alumno</option>
+                        <option value="maestro" ${u.rol==='maestro'?'selected':''}>👨‍🏫 Maestro</option>
+                        <option value="encargado" ${u.rol==='encargado'?'selected':''}>👤 Encargado</option>
+                    </select>
+                </div>
+                
+                <div style="display:flex;gap:10px;">
+                    <button onclick="actualizarUsuario()" style="flex:1;padding:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">💾 Actualizar</button>
+                    <button onclick="cerrarModalUsuario()" style="flex:1;padding:14px;background:#6c757d;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">❌ Cancelar</button>
+                </div>
+            </div>
+        </div>`;
+        
+        document.body.insertAdjacentHTML('beforeend', html);
+    } catch (e) {
+        console.error("❌ Error:", e);
+        alert("❌ Error al cargar usuario");
+    }
+};
+
+/**
+ * Actualizar usuario
+ */
+window.actualizarUsuario = async function() {
+    const id = document.getElementById('usr_id').value;
+    const nombre = document.getElementById('usr_nombre').value.trim();
+    const correo = document.getElementById('usr_correo').value.trim();
+    const password = document.getElementById('usr_password').value;
+    const rol = document.getElementById('usr_rol').value;
+
+    if (!nombre) { alert("❌ Ingresa el nombre"); return; }
+    if (!correo) { alert("❌ Ingresa el correo"); return; }
+    if (!rol) { alert("❌ Selecciona un rol"); return; }
+
+    const fd = new FormData();
+    fd.append('id_usuario', id);
+    fd.append('nombre', nombre);
+    fd.append('correo', correo);
+    fd.append('password', password);
+    fd.append('rol', rol);
+
+    try {
+        const res = await fetch("php/usuarios_actualizar.php", { method: "POST", body: fd });
+        const txt = await res.text();
+        const data = JSON.parse(txt);
+        
+        if (data.ok) {
+            alert("✅ Usuario actualizado");
+            cerrarModalUsuario();
+            cargarUsuarios();
+        } else {
+            alert("❌ " + (data.error || "Error"));
+        }
+    } catch (e) {
+        console.error("❌ Error:", e);
+        alert("❌ Error de conexión");
+    }
+};
 
 /**
  * Eliminar usuario
  */
-async function eliminarUsuario(id) {
-    console.log(`🗑️ Intentando eliminar usuario ID: ${id}`);
-    
+window.eliminarUsuario = async function(id) {
+    if (!confirm("¿Eliminar este usuario?")) return;
+
+    const fd = new FormData();
+    fd.append('id_usuario', id);
+
     try {
-        // Obtener información del usuario
-        const response = await fetch(`php/usuarios_obtener.php?id=${id}`);
-        const data = await response.json();
+        const res = await fetch("php/usuarios_eliminar.php", { method: "POST", body: fd });
+        const txt = await res.text();
+        const data = JSON.parse(txt);
         
-        if (data.status !== 'ok' || !data.usuario) {
-            alert('❌ Usuario no encontrado');
-            return;
+        if (data.ok) {
+            alert("✅ Usuario eliminado");
+            cargarUsuarios();
+        } else {
+            alert("❌ " + (data.error || "Error"));
         }
-        
-        const usuario = data.usuario;
-        
-        if (confirm(`❓ ¿Está seguro de eliminar al usuario?\n\n👤 ${usuario.nombre}\n📧 ${usuario.correo}\n🎭 ${usuario.rol}\n\n⚠️ Esta acción NO se puede deshacer.`)) {
-            const formData = new FormData();
-            formData.append('id_usuario', id);
-            
-            const deleteResponse = await fetch('php/usuarios_eliminar.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const deleteData = await deleteResponse.json();
-            
-            if (deleteData.status === 'ok') {
-                alert(`✅ Usuario "${usuario.nombre}" eliminado correctamente`);
-                cargarUsuarios(); // Recargar tabla
-            } else {
-                alert('❌ Error: ' + (deleteData.mensaje || 'Error desconocido'));
-            }
-        }
-        
-    } catch (error) {
-        console.error("❌ Error eliminando usuario:", error);
-        alert('❌ Error al eliminar usuario: ' + error.message);
+    } catch (e) {
+        console.error("❌ Error:", e);
+        alert("❌ Error de conexión");
     }
-}
+};
 
 /**
- * Mostrar error en tabla de usuarios
+ * Cerrar modal
  */
-function mostrarErrorUsuarios(mensaje) {
-    const tbody = document.querySelector("#tablaUsuarios tbody");
-    if (tbody) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #721c24;">
-                    <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
-                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">${mensaje}</div>
-                    <div style="font-size: 14px; color: #666;">
-                        <button onclick="cargarUsuarios()" style="
-                            background: #155724; 
-                            color: white; 
-                            padding: 8px 16px; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer;
-                            margin-top: 10px;
-                        ">
-                            🔄 Reintentar
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
+window.cerrarModalUsuario = function() {
+    const m = document.getElementById('modalUsuario');
+    if (m) m.remove();
+};
 
-console.log("✅ Sistema de usuarios cargado");
+console.log("✅ [USUARIOS v8] Sistema cargado completamente");

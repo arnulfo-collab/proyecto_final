@@ -1,112 +1,70 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-error_reporting(E_ALL);
+// TEMPORAL: mostrar errores para debugging
 ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-require_once 'conexion.php';
+header('Content-Type: application/json; charset=utf-8');
 
-try {
-    // Verificar conexión
-    if (!$conexion || $conexion->connect_error) {
-        throw new Exception('Error de conexión: ' . ($conexion->connect_error ?? 'Conexión no establecida'));
-    }
+require_once __DIR__ . '/conexion.php';
 
-    // Por ahora obtenemos el ID del alumno desde sesión o parámetro
-    $id_alumno = $_GET['id_alumno'] ?? 1; // Valor por defecto para pruebas
-    $vigentes = $_GET['vigentes'] ?? 0; // Parámetro para solo mostrar vigentes
-    
-    // Construir WHERE según si queremos solo vigentes o historial completo
-    $whereClause = "WHERE (
-        (p.tipo_prestamo = 'individual' AND p.id_alumno_especifico = ?) OR
-        (p.tipo_prestamo = 'grupal')
-    ) AND p.estado = 'autorizado'";
-    
-    if ($vigentes == 1) {
-        // Solo mostrar clases desde hoy en adelante
-        $whereClause .= " AND DATE(p.fecha_prestamo) >= CURDATE()";
-    }
-
-    // Consulta para obtener préstamos del alumno
-    $query = "
-        SELECT 
-            p.id_prestamo,
-            p.fecha_prestamo,
-            p.fecha_solicitud,
-            p.estado,
-            p.tipo_prestamo,
-            p.nombre_grupo,
-            p.descripcion_clase,
-            p.numero_alumnos,
-            p.motivo_individual,
-            l.nombre AS nombre_laboratorio,
-            l.ubicacion,
-            u.nombre AS nombre_maestro
-        FROM prestamos p
-        INNER JOIN laboratorios l ON p.id_laboratorio = l.id_laboratorio
-        INNER JOIN usuarios u ON p.id_usuario = u.id_usuario
-        $whereClause
-        ORDER BY p.fecha_prestamo ASC
-    ";
-
-    $stmt = $conexion->prepare($query);
-    if (!$stmt) {
-        throw new Exception('Error preparando consulta: ' . $conexion->error);
-    }
-
-    $stmt->bind_param("i", $id_alumno);
-    $resultado = $stmt->execute();
-
-    if (!$resultado) {
-        throw new Exception('Error ejecutando consulta: ' . $stmt->error);
-    }
-
-    $result = $stmt->get_result();
-    $prestamos = [];
-
-    while ($row = $result->fetch_assoc()) {
-        $prestamos[] = [
-            'id_prestamo' => (int)$row['id_prestamo'],
-            'nombre_laboratorio' => $row['nombre_laboratorio'],
-            'ubicacion' => $row['ubicacion'],
-            'nombre_maestro' => $row['nombre_maestro'],
-            'fecha_prestamo' => $row['fecha_prestamo'],
-            'fecha_solicitud' => $row['fecha_solicitud'],
-            'estado' => $row['estado'],
-            'tipo_prestamo' => $row['tipo_prestamo'],
-            'nombre_grupo' => $row['nombre_grupo'],
-            'descripcion_clase' => $row['descripcion_clase'],
-            'numero_alumnos' => $row['numero_alumnos'],
-            'motivo_individual' => $row['motivo_individual']
-        ];
-    }
-
-    $stmt->close();
-
-    // Respuesta exitosa
-    echo json_encode([
-        'status' => 'ok',
-        'prestamos' => $prestamos,
-        'total' => count($prestamos),
-        'alumno_id' => $id_alumno,
-        'vigentes_only' => $vigentes == 1,
-        'fecha_consulta' => date('Y-m-d H:i:s')
-    ]);
-
-} catch (Exception $e) {
+// Verificar que exista conexión mysqli ($conexion) creada en conexion.php
+if (!isset($conexion) || !($conexion instanceof mysqli)) {
+    http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'mensaje' => 'Error del servidor: ' . $e->getMessage(),
-        'debug' => [
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ]
-    ]);
+        'message' => 'No se estableció conexión con la base de datos'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-// Cerrar conexión
-if (isset($conexion)) {
-    $conexion->close();
+try {
+    // Consulta: traer préstamos autorizados, pendientes y en uso (NO rechazados ni finalizados)
+    $sql = "SELECT 
+                p.id_prestamo,
+                p.id_usuario,
+                p.id_laboratorio,
+                p.fecha_prestamo,
+                p.fecha_devolucion,
+                p.estado,
+                p.fecha_solicitud,
+                p.tipo_prestamo,
+                p.nombre_grupo,
+                p.descripcion_clase,
+                p.numero_alumnos,
+                p.motivo_individual,
+                u.nombre AS nombre_maestro,
+                u.correo AS correo_maestro,
+                l.nombre AS nombre_laboratorio,
+                l.ubicacion AS ubicacion_laboratorio
+            FROM prestamos p
+            LEFT JOIN usuarios u ON p.id_usuario = u.id_usuario
+            LEFT JOIN laboratorios l ON p.id_laboratorio = l.id_laboratorio
+            WHERE p.estado IN ('autorizado', 'pendiente', 'en_uso')";
+
+    // Filtro opcional adicional: solo préstamos vigentes (fecha >= hoy)
+    if (isset($_GET['vigentes']) && $_GET['vigentes'] == '1') {
+        $sql .= " AND DATE(p.fecha_prestamo) >= CURDATE()";
+    }
+
+    $sql .= " ORDER BY p.fecha_prestamo DESC";
+
+    $result = $conexion->query($sql);
+    if ($result === false) {
+        throw new Exception('Error en consulta SQL: ' . $conexion->error);
+    }
+
+    $prestamos = $result->fetch_all(MYSQLI_ASSOC);
+    $result->free();
+
+    echo json_encode(['status' => 'ok', 'prestamos' => $prestamos], JSON_UNESCAPED_UNICODE);
+    exit;
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Error interno del servidor',
+        'detail' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 ?>

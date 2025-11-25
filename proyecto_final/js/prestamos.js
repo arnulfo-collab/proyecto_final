@@ -56,26 +56,21 @@ async function cargarLaboratorios() {
     if (!select) return;
 
     try {
-        // CAMBIAR DE laboratorios.php A laboratorios_gestion.php
-        const response = await fetch("php/laboratorios_gestion.php");
+        const response = await fetch("php/laboratorios.php");
         const data = await response.json();
+
+        if (data.status === "error") {
+            throw new Error(data.mensaje);
+        }
 
         select.innerHTML = '<option value="">Seleccionar laboratorio...</option>';
         
-        // laboratorios_gestion.php devuelve array directo
-        const laboratorios = Array.isArray(data) ? data : [];
-        
-        // Filtrar solo disponibles para maestros
-        const disponibles = laboratorios.filter(lab => lab.estado === 'disponible');
-        
-        disponibles.forEach(lab => {
+        data.forEach(lab => {
             const option = document.createElement("option");
             option.value = lab.id_laboratorio;
             option.textContent = `${lab.nombre} - ${lab.ubicacion} (${lab.capacidad} personas)`;
             select.appendChild(option);
         });
-
-        console.log(`✅ ${disponibles.length} laboratorios disponibles cargados`);
 
     } catch (error) {
         console.error("Error al cargar laboratorios:", error);

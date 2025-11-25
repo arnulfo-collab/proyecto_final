@@ -106,12 +106,33 @@ async function cargarLaboratoriosGestion() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">🔄 Cargando laboratorios...</td></tr>';
 
     try {
-        const response = await fetch("php/laboratorios_gestion.php", {
+        // Probar primero con laboratorios.php existente
+        let url = "php/laboratorios.php?para_mantenimiento=1";
+        
+        console.log("📡 Intentando cargar desde:", url);
+        
+        const response = await fetch(url, {
             method: 'GET',
-            cache: 'no-store'
+            credentials: 'same-origin'
         });
         
         console.log("📊 Response status:", response.status);
+        
+        if (response.status === 404) {
+            console.log("❌ 404 - Probando ruta alternativa...");
+            // Probar ruta alternativa
+            url = "php/laboratorios_gestion.php";
+            const response2 = await fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+            
+            if (response2.status === 404) {
+                throw new Error("No se encontraron los archivos PHP necesarios");
+            }
+            
+            response = response2;
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -126,6 +147,10 @@ async function cargarLaboratoriosGestion() {
         
         const data = JSON.parse(text);
         console.log("📦 Data:", data);
+
+        if (data.status === "error") {
+            throw new Error(data.mensaje);
+        }
 
         tbody.innerHTML = "";
 
@@ -148,6 +173,7 @@ async function cargarLaboratoriosGestion() {
         laboratorios.forEach((lab) => {
             const fila = document.createElement('tr');
             
+            // Color del estado
             let estadoColor = '#6c757d';
             let estadoTexto = lab.estado.toUpperCase();
             
@@ -205,7 +231,15 @@ async function cargarLaboratoriosGestion() {
                 <td colspan="6" style="text-align: center; padding: 30px;">
                     <div style="color: red; font-size: 18px; margin-bottom: 10px;">❌ Error al cargar laboratorios</div>
                     <div style="color: #666; margin-bottom: 15px;">${error.message}</div>
-                    <button onclick="cargarLaboratoriosGestion()" class="btn btn-primary">
+                    <button onclick="cargarLaboratoriosGestion()" style="
+                        background: #007bff; 
+                        color: white; 
+                        border: none; 
+                        padding: 10px 20px; 
+                        border-radius: 5px; 
+                        cursor: pointer;
+                        font-weight: bold;
+                    ">
                         🔄 Reintentar
                     </button>
                 </td>
@@ -217,50 +251,42 @@ async function cargarLaboratoriosGestion() {
 // =======================================
 // FUNCIÓN: Guardar laboratorio (nuevo o editar)
 // =======================================
-async function guardarLaboratorio(event) {
-    event.preventDefault();
-    console.log('💾 Guardando laboratorio...');
+async function guardarLaboratorio(e) {
+    e.preventDefault();
+    console.log("💾 Guardando laboratorio...");
+
+    const formData = new FormData(e.target);
     
-    const formData = new FormData(event.target);
-    
-    // DEBUG: Mostrar lo que se está enviando
-    console.log('📤 Datos que se envían:');
-    for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}: ${value}`);
+    // Validaciones básicas
+    const nombre = formData.get("nombre");
+    const ubicacion = formData.get("ubicacion");
+    const capacidad = formData.get("capacidad");
+
+    if (!nombre || !ubicacion || !capacidad || capacidad <= 0) {
+        alert("Por favor complete todos los campos correctamente");
+        return;
     }
-    
+
     try {
-        const response = await fetch('php/laboratorios_gestion.php', {
-            method: 'POST',
+        const response = await fetch("php/laboratorios_gestion.php", {
+            method: "POST",
             body: formData
         });
-        
-        const text = await response.text();
-        const data = JSON.parse(text);
-        
-        console.log('📦 Respuesta:', data);
-        
-        if (data.ok === true) {
-            alert('✅ ' + (data.msg || 'Laboratorio guardado correctamente'));
-            
-            // Limpiar y ocultar formulario
-            event.target.reset();
-            const container = document.getElementById('formLaboratorioContainer');
-            if (container) {
-                container.style.display = 'none';
-            }
-            
-            // FORZAR recarga de tabla
-            console.log('🔄 FORZANDO recarga de tabla...');
-            setTimeout(() => {
-                recargarTablaLaboratorios();
-            }, 100);
+
+        const data = await response.json();
+        console.log("📦 Respuesta:", data);
+
+        if (data.status === "ok") {
+            alert("✅ " + data.mensaje);
+            cancelarFormLaboratorio();
+            cargarLaboratoriosGestion();
         } else {
-            alert('❌ Error: ' + (data.error || 'No se pudo guardar'));
+            alert("❌ Error: " + data.mensaje);
         }
+
     } catch (error) {
-        console.error('❌ Error:', error);
-        alert('❌ Error: ' + error.message);
+        console.error("❌ Error:", error);
+        alert("❌ Error de conexión: " + error.message);
     }
 }
 
@@ -268,31 +294,39 @@ async function guardarLaboratorio(event) {
 // FUNCIÓN: Editar laboratorio
 // =======================================
 function editarLaboratorio(id, nombre, ubicacion, capacidad, estado) {
-    console.log(`✏️ Editando laboratorio ${id}`);
+    console.log("✏️ Editando laboratorio:", id);
     
+    // Mostrar formulario
+    document.getElementById('formLaboratorioContainer').style.display = 'block';
+    
+    // Llenar campos
     document.getElementById('lab_id_laboratorio').value = id;
     document.getElementById('lab_nombre').value = nombre;
     document.getElementById('lab_ubicacion').value = ubicacion;
     document.getElementById('lab_capacidad').value = capacidad;
     document.getElementById('lab_estado').value = estado;
     
-    const container = document.getElementById('formLaboratorioContainer');
-    if (container) {
-        container.style.display = 'block';
-        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Cambiar título
+    document.querySelector('#formLaboratorioContainer h4').textContent = 'Editar Laboratorio';
+    
+    // Scroll al formulario
+    document.getElementById('formLaboratorioContainer').scrollIntoView({behavior: 'smooth'});
 }
 
 // =======================================
 // FUNCIÓN: Eliminar laboratorio
 // =======================================
 async function eliminarLaboratorio(id, nombre) {
-    if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+    if (!confirm(`¿Está seguro de eliminar el laboratorio "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
 
     try {
         const response = await fetch("php/laboratorios_gestion.php", {
             method: "DELETE",
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
             body: `id_laboratorio=${id}`
         });
 
@@ -300,12 +334,13 @@ async function eliminarLaboratorio(id, nombre) {
 
         if (data.status === "ok") {
             alert("✅ " + data.mensaje);
-            recargarTablaLaboratorios();
+            cargarLaboratoriosGestion();
         } else {
-            alert("❌ " + data.mensaje);
+            alert("❌ Error: " + data.mensaje);
         }
+
     } catch (error) {
-        console.error("❌", error);
+        console.error("❌ Error:", error);
         alert("❌ Error de conexión");
     }
 }
@@ -314,14 +349,10 @@ async function eliminarLaboratorio(id, nombre) {
 // FUNCIÓN: Cancelar formulario
 // =======================================
 function cancelarFormLaboratorio() {
-    const form = document.getElementById('formLaboratorio');
-    const container = document.getElementById('formLaboratorioContainer');
-    
-    if (form && container) {
-        form.reset();
-        container.style.display = 'none';
-        console.log('✅ Formulario cancelado');
-    }
+    document.getElementById('formLaboratorioContainer').style.display = 'none';
+    document.getElementById('formLaboratorio').reset();
+    document.getElementById('lab_id_laboratorio').value = '';
+    document.querySelector('#formLaboratorioContainer h4').textContent = 'Nuevo Laboratorio';
 }
 
 // =======================================
@@ -714,204 +745,5 @@ async function eliminarUsuario(id_usuario) {
     } catch (error) {
         console.error('Error:', error);
         alert('❌ Error al eliminar usuario: ' + error.message);
-    }
-}
-
-// RENOMBRAR la función a algo único
-async function recargarTablaLaboratorios() {
-    console.log("🔄 Recargando tabla de laboratorios...");
-    
-    const tbody = document.querySelector("#tablaLaboratorios tbody");
-    if (!tbody) {
-        console.error("❌ No se encontró #tablaLaboratorios tbody");
-        return;
-    }
-
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">🔄 Cargando laboratorios...</td></tr>';
-
-    try {
-        const response = await fetch("php/laboratorios_gestion.php", {
-            method: 'GET',
-            cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
-        });
-        
-        const text = await response.text();
-        const data = JSON.parse(text);
-        
-        tbody.innerHTML = "";
-        const laboratorios = Array.isArray(data) ? data : [];
-        
-        if (laboratorios.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 30px; color: #666;">
-                        <div style="font-size: 48px; margin-bottom: 15px;">🔬</div>
-                        <div style="font-size: 16px;">No hay laboratorios registrados</div>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        laboratorios.forEach((lab) => {
-            const fila = document.createElement('tr');
-            
-            let estadoColor = '#6c757d';
-            let estadoTexto = lab.estado.toUpperCase();
-            
-            switch(lab.estado) {
-                case 'disponible': 
-                    estadoColor = '#28a745'; 
-                    estadoTexto = 'DISPONIBLE';
-                    break;
-                case 'mantenimiento': 
-                    estadoColor = '#ffc107'; 
-                    estadoTexto = 'MANTENIMIENTO';
-                    break;
-                case 'fuera_servicio': 
-                    estadoColor = '#dc3545'; 
-                    estadoTexto = 'FUERA DE SERVICIO';
-                    break;
-            }
-            
-            fila.innerHTML = `
-                <td style="font-weight: bold;">${lab.id_laboratorio}</td>
-                <td style="font-weight: bold;">${escapeHtml(lab.nombre)}</td>
-                <td>${escapeHtml(lab.ubicacion)}</td>
-                <td style="text-align: center;">${lab.capacidad}</td>
-                <td style="text-align: center;">
-                    <span style="background-color: ${estadoColor}; color: white; padding: 6px 12px; border-radius: 15px; font-size: 11px; font-weight: bold;">
-                        ${estadoTexto}
-                    </span>
-                </td>
-                <td style="text-align: center;">
-                    <button class="btn btn-amarillo" onclick="editarLaboratorio(${lab.id_laboratorio}, '${escapeHtml(lab.nombre)}', '${escapeHtml(lab.ubicacion)}', ${lab.capacidad}, '${lab.estado}')" style="margin-right: 5px;">
-                        ✏️ Editar
-                    </button>
-                    <button class="btn btn-rojo" onclick="eliminarLaboratorio(${lab.id_laboratorio}, '${escapeHtml(lab.nombre)}')">
-                        🗑️ Eliminar
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(fila);
-        });
-
-        console.log(`✅ ${laboratorios.length} laboratorios cargados en la tabla`);
-
-    } catch (error) {
-        console.error("❌ Error:", error);
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 30px; color: red;">❌ Error: ${error.message}</td></tr>`;
-    }
-}
-
-// Actualizar la función guardarLaboratorio
-async function guardarLaboratorio(event) {
-    event.preventDefault();
-    console.log('💾 Guardando laboratorio...');
-    
-    const formData = new FormData(event.target);
-    
-    try {
-        const response = await fetch('php/laboratorios_gestion.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const text = await response.text();
-        const data = JSON.parse(text);
-        
-        console.log('📦 Respuesta:', data);
-        
-        if (data.ok === true) {
-            alert('✅ ' + (data.msg || 'Laboratorio guardado correctamente'));
-            
-            // Limpiar y ocultar formulario
-            event.target.reset();
-            const container = document.getElementById('formLaboratorioContainer');
-            if (container) {
-                container.style.display = 'none';
-            }
-            
-            // FORZAR recarga de tabla
-            console.log('🔄 FORZANDO recarga de tabla...');
-            setTimeout(() => {
-                recargarTablaLaboratorios();
-            }, 100);
-        } else {
-            alert('❌ Error: ' + (data.error || 'No se pudo guardar'));
-        }
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('❌ Error: ' + error.message);
-    }
-}
-
-// Actualizar función eliminarLaboratorio
-async function eliminarLaboratorio(id, nombre) {
-    if (!confirm(`¿Eliminar "${nombre}"?`)) return;
-
-    try {
-        const response = await fetch("php/laboratorios_gestion.php", {
-            method: "DELETE",
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `id_laboratorio=${id}`
-        });
-
-        const data = await response.json();
-
-        if (data.status === "ok") {
-            alert("✅ " + data.mensaje);
-            recargarTablaLaboratorios();
-        } else {
-            alert("❌ " + data.mensaje);
-        }
-    } catch (error) {
-        console.error("❌", error);
-        alert("❌ Error de conexión");
-    }
-}
-
-// AGREGAR estas funciones auxiliares al final:
-
-function mostrarFormNuevoLab() {
-    const form = document.getElementById('formLaboratorio');
-    const container = document.getElementById('formLaboratorioContainer');
-    
-    if (form && container) {
-        form.reset();
-        document.getElementById('lab_id_laboratorio').value = '';
-        container.style.display = 'block';
-        console.log('✅ Formulario de nuevo laboratorio mostrado');
-    }
-}
-
-function cancelarFormLaboratorio() {
-    const form = document.getElementById('formLaboratorio');
-    const container = document.getElementById('formLaboratorioContainer');
-    
-    if (form && container) {
-        form.reset();
-        container.style.display = 'none';
-        console.log('✅ Formulario cancelado');
-    }
-}
-
-function editarLaboratorio(id, nombre, ubicacion, capacidad, estado) {
-    console.log(`✏️ Editando laboratorio ${id}`);
-    
-    document.getElementById('lab_id_laboratorio').value = id;
-    document.getElementById('lab_nombre').value = nombre;
-    document.getElementById('lab_ubicacion').value = ubicacion;
-    document.getElementById('lab_capacidad').value = capacidad;
-    document.getElementById('lab_estado').value = estado;
-    
-    const container = document.getElementById('formLaboratorioContainer');
-    if (container) {
-        container.style.display = 'block';
-        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
